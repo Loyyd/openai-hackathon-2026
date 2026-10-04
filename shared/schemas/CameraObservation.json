@@ -1,0 +1,69 @@
+{
+  "$defs": {
+    "Location": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "latitude": {
+          "maximum": 90,
+          "minimum": -90,
+          "title": "Latitude",
+          "type": "number"
+        },
+        "longitude": {
+          "maximum": 180,
+          "minimum": -180,
+          "title": "Longitude",
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "latitude",
+        "longitude"
+      ],
+      "title": "Location",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "camera_id": {
+      "title": "Camera Id",
+      "type": "string"
+    },
+    "timestamp": {
+      "format": "date-time",
+      "title": "Timestamp",
+      "type": "string"
+    },
+    "image_url": {
+      "title": "Image Url",
+      "type": "string"
+    },
+    "location": {
+      "$ref": "#/$defs/Location"
+    }
+  },
+  "required": [
+    "id",
+    "camera_id",
+    "timestamp",
+    "image_url",
+    "location"
+  ],
+  "title": "CameraObservation",
+  "type": "object"
+}

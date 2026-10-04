@@ -1,0 +1,7 @@
+[
+  {"id":"demo_obs_0","camera_id":"demo_cam_0","timestamp":"2026-10-04T10:00:00Z","image_url":"/demo-camera.svg","location":{"id":"custom_house","name":"Custom House Quay","latitude":53.348,"longitude":-6.248}},
+  {"id":"demo_obs_1","camera_id":"demo_cam_1","timestamp":"2026-10-04T10:00:00Z","image_url":"/demo-camera.svg","location":{"id":"oconnell","name":"O'Connell Street","latitude":53.35,"longitude":-6.26}},
+  {"id":"demo_obs_2","camera_id":"demo_cam_2","timestamp":"2026-10-04T10:00:00Z","image_url":"/demo-camera.svg","location":{"id":"airport","name":"Dublin Airport","latitude":53.427,"longitude":-6.243}},
+  {"id":"demo_obs_3","camera_id":"demo_cam_3","timestamp":"2026-10-04T10:00:00Z","image_url":"/demo-camera.svg","location":{"id":"dcu","name":"DCU Glasnevin","latitude":53.385,"longitude":-6.257}},
+  {"id":"demo_obs_4","camera_id":"demo_cam_4","timestamp":"2026-10-04T10:00:00Z","image_url":"/demo-camera.svg","location":{"id":"m50","name":"M50","latitude":53.365,"longitude":-6.374}}
+]

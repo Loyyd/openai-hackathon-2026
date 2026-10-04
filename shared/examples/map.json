@@ -1,0 +1,118 @@
+{
+  "cameras": [
+    {
+      "id": "demo_cam_0",
+      "provider": "TII DEMO",
+      "name": "Custom House Quay — DEMO",
+      "location": {
+        "id": "custom_house",
+        "name": "Custom House Quay",
+        "latitude": 53.348,
+        "longitude": -6.248
+      },
+      "image_url": "/demo-camera.svg",
+      "last_updated": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "demo_cam_1",
+      "provider": "TII DEMO",
+      "name": "O'Connell Street — DEMO",
+      "location": {
+        "id": "oconnell",
+        "name": "O'Connell Street",
+        "latitude": 53.35,
+        "longitude": -6.26
+      },
+      "image_url": "/demo-camera.svg",
+      "last_updated": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "demo_cam_2",
+      "provider": "TII DEMO",
+      "name": "Dublin Airport — DEMO",
+      "location": {
+        "id": "airport",
+        "name": "Dublin Airport",
+        "latitude": 53.427,
+        "longitude": -6.243
+      },
+      "image_url": "/demo-camera.svg",
+      "last_updated": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "demo_cam_3",
+      "provider": "TII DEMO",
+      "name": "DCU Glasnevin — DEMO",
+      "location": {
+        "id": "dcu",
+        "name": "DCU Glasnevin",
+        "latitude": 53.385,
+        "longitude": -6.257
+      },
+      "image_url": "/demo-camera.svg",
+      "last_updated": "2026-10-04T10:00:00Z"
+    },
+    {
+      "id": "demo_cam_4",
+      "provider": "TII DEMO",
+      "name": "M50 — DEMO",
+      "location": {
+        "id": "m50",
+        "name": "M50",
+        "latitude": 53.365,
+        "longitude": -6.374
+      },
+      "image_url": "/demo-camera.svg",
+      "last_updated": "2026-10-04T10:00:00Z"
+    }
+  ],
+  "incidents": [
+    {
+      "id": "demo_incident",
+      "type": "traffic_congestion",
+      "title": "DEMO: Congestion at Custom House Quay",
+      "description": "Synthetic traffic scenario for development.",
+      "severity": "medium",
+      "confidence": 0.87,
+      "location": {
+        "id": "custom_house",
+        "name": "Custom House Quay",
+        "latitude": 53.348,
+        "longitude": -6.248
+      },
+      "camera_ids": [
+        "demo_cam_0"
+      ],
+      "related_observation_ids": [
+        "demo_obs_0"
+      ],
+      "first_seen": "2026-10-04T10:00:00Z",
+      "last_seen": "2026-10-04T10:00:00Z",
+      "status": "active",
+      "metadata": {
+        "demo": true
+      }
+    }
+  ],
+  "transport": [
+    {
+      "id": "demo_bus_41",
+      "provider": "transport_for_ireland DEMO",
+      "type": "bus",
+      "route": "41",
+      "vehicle_id": "demo_vehicle",
+      "location": {
+        "id": "oconnell",
+        "name": "O'Connell Street",
+        "latitude": 53.35,
+        "longitude": -6.26
+      },
+      "timestamp": "2026-10-04T10:00:00Z",
+      "speed": 18.4,
+      "delay_seconds": 240,
+      "metadata": {
+        "demo": true
+      }
+    }
+  ]
+}

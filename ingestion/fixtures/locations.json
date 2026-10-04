@@ -1,0 +1,7 @@
+[
+  {"id":"custom_house","name":"Custom House Quay","latitude":53.348,"longitude":-6.248},
+  {"id":"oconnell","name":"O'Connell Street","latitude":53.35,"longitude":-6.26},
+  {"id":"airport","name":"Dublin Airport","latitude":53.427,"longitude":-6.243},
+  {"id":"dcu","name":"DCU Glasnevin","latitude":53.385,"longitude":-6.257},
+  {"id":"m50","name":"M50","latitude":53.365,"longitude":-6.374}
+]
