@@ -21,9 +21,9 @@ def main() -> None:
     parser.add_argument("--sample-fps", type=float, default=5)
     parser.add_argument("--start-time", type=float, default=0, help="Seconds into source video")
     parser.add_argument("--end-time", type=float, help="Exclusive end in source seconds")
-    parser.add_argument("--detection-width", type=int, default=1280)
+    parser.add_argument("--detection-width", type=int, default=1920)
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--weights", default="yolo11n.pt")
+    parser.add_argument("--weights", default="yolo11m.pt")
     parser.add_argument("--embedding-backend", choices=["resnet18", "histogram"], default="resnet18")
     parser.add_argument("--recognition-interval", type=float, default=1)
     parser.add_argument("--match-threshold", type=float, default=0.85)
@@ -122,6 +122,7 @@ def main() -> None:
         (args.output / "run.json").write_text(json.dumps({"source": str(args.video), "width": width, "height": height,
             "source_fps": source_fps, "sample_fps": sampled_fps, "frames": frames,
             "embedding_backend": processor.encoder.backend, "device": processor.detector.device,
+            "detector": Path(config.weights).name, "detection_width": min(width, config.detection_width),
             "ocr_status": "disabled" if not processor.plate_recognizer else "unavailable" if processor.plate_recognizer._initialization_failed else "attempted (readability not guaranteed)",
             "raw_plates_stored": args.store_raw_plates}, indent=2))
     print(f"Processed {frames} sampled frames; output: {args.output}")

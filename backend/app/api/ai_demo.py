@@ -22,7 +22,7 @@ def summary():
     except (OSError, ValueError):
         raise HTTPException(404, "No processed AI demo. Run the vehicle pipeline first.")
     allowed = {"vehicle_id", "color", "color_confidence", "make", "model", "first_seen", "last_seen", "observation_count", "identity_confidence", "decision", "evidence"}
-    return {"run": {k: run.get(k) for k in ("width", "height", "frames", "sample_fps", "embedding_backend", "device", "ocr_status")},
+    return {"run": {k: run.get(k) for k in ("width", "height", "frames", "sample_fps", "embedding_backend", "device", "ocr_status", "detector", "detection_width")},
             "vehicles": [{k: v for k, v in item.items() if k in allowed} for item in vehicles],
             "video_available": (root / "browser.mp4").is_file()}
 
