@@ -40,6 +40,13 @@ class SentinelXService:
         self.get("cameras", camera_id, "Camera")
         return [item for item in self.list("observations") if item["camera_id"] == camera_id]
 
+    def observation_detections(self, observation_id: str) -> list[dict[str, Any]]:
+        self.get("observations", observation_id, "Observation")
+        return [
+            item for item in self.list("detections")
+            if item["observation_id"] == observation_id
+        ]
+
     def map_data(self) -> dict[str, list[dict[str, Any]]]:
         return {kind: self.list(kind) for kind in ("cameras", "incidents", "transport")}
 

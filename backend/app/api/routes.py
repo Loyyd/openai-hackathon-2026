@@ -35,6 +35,18 @@ def camera_observations(camera_id: str, request: Request):
     return _service(request).camera_observations(camera_id)
 
 
+@router.get("/api/detections", response_model=list[Detection])
+def detections(request: Request):
+    return _service(request).list("detections")
+
+
+@router.get(
+    "/api/observations/{observation_id}/detections", response_model=list[Detection]
+)
+def observation_detections(observation_id: str, request: Request):
+    return _service(request).observation_detections(observation_id)
+
+
 @router.get("/api/incidents", response_model=list[Incident])
 def incidents(request: Request):
     return _service(request).list("incidents")
