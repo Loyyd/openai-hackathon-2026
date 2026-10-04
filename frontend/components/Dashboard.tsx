@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient, errorMessage, request } from '../lib/api';
 import { sortIncidents } from '../lib/presentation';
 import type { MapData, Selection } from '../types';
@@ -21,18 +21,22 @@ export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras'
   const [selection, setSelection] = useState<Selection>(null);
   const [filters, setFilters] = useState<IncidentFilters>(defaultFilters);
   const [expandedIncidents, setExpandedIncidents] = useState(false);
+  const refreshing = useRef(false);
   const [refreshKey, setRefreshKey] = useState<string | null>(null);
   const refresh = useCallback(async (signal?: AbortSignal) => {
+    if (refreshing.current) return;
+    refreshing.current = true;
     try {
       const [map, state] = await Promise.all([client.map(signal), request<Processing>('/api/processing', { signal })]);
       if (signal?.aborted) return;
-      setData(map); setProcessing(state); setError(''); setRefreshKey(new Date().toISOString());
+      setData(previous => JSON.stringify(previous) === JSON.stringify(map) ? previous : map); setProcessing(state); setError(''); setRefreshKey(new Date().toISOString());
     } catch (cause) { if (!signal?.aborted) setError(errorMessage(cause)); }
+    finally { refreshing.current = false; }
   }, [client]);
   useEffect(() => {
     const controller = new AbortController();
     const run = () => { if (!document.hidden) void refresh(controller.signal); };
-    run(); const timer = setInterval(run, 5000);
+    run(); const timer = setInterval(run, 15000);
     document.addEventListener('visibilitychange', run);
     return () => { controller.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', run); };
   }, [refresh]);
