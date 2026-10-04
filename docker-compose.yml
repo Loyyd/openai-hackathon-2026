@@ -5,6 +5,8 @@ services:
       POSTGRES_USER: sentinelx
       POSTGRES_PASSWORD: sentinelx
       POSTGRES_DB: sentinelx
+    ports:
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -18,6 +20,12 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://sentinelx:sentinelx@db:5432/sentinelx
+      SNAPSHOT_STORAGE_DIR: /app/backend/uploads
+      TRANSPORT_CACHE_DIR: /app/output/transport-cache
+      NTA_API_KEY: ${NTA_API_KEY:-}
+    volumes:
+      - snapshot_data:/app/backend/uploads
+      - transport_cache:/app/output/transport-cache
     ports:
       - "8000:8000"
     healthcheck:
@@ -48,3 +56,5 @@ services:
       retries: 10
 volumes:
   postgres_data:
+  snapshot_data:
+  transport_cache:

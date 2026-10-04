@@ -7,12 +7,14 @@ A hackathon demo for Dublin situational awareness. **The default Dublin cameras,
 Run Python commands from the repository root (Python 3.11+):
 
 ```sh
+python3 --version  # Must be Python 3.11 or newer
 python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+.venv/bin/python -m pip install -r requirements.txt
 cp .env.example .env
-uvicorn backend.app.main:app --reload --port 8000
+./scripts/run_backend.sh --reload
 ```
+
+Keep the backend terminal running. The launcher always uses the repository's `.venv` and checks its Python version; shell activation is optional. After the first setup, start the backend with just `./scripts/run_backend.sh --reload`.
 
 In another terminal (Node 22+):
 
@@ -24,6 +26,12 @@ npm run dev
 
 Open http://localhost:3000; API docs: http://localhost:8000/docs. Python reads process environment variables; `.env` is a template, not automatically loaded. Use `export DATABASE_URL=sqlite:///./sentinelx.db` before starting the backend for persisted local data. Leave it unset for independent in-memory development. For frontend configuration, copy BACKEND_URL and relevant NEXT_PUBLIC_* settings into frontend/.env.local, then restart development or rebuild production.
 
+### Backend startup troubleshooting
+
+If a traceback mentions Xcode's Python 3.9 or `Library/Python/3.9/.../uvicorn`, the bare `uvicorn` command is using a global installation. Stop that command with Ctrl+C and run `./scripts/run_backend.sh --reload` from the repository root. The equivalent direct command is `.venv/bin/python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000`. The shared contracts require Python 3.11+.
+
+Check http://localhost:8000/health directly and http://localhost:3000/backend/health through the frontend; both should return `{"status":"ok"}`. A failed backend startup causes the dashboard's “Backend unavailable” and proxy 500 errors. Once the backend starts, select “Retry connection” or wait for the next refresh. Auth and workflow routes are still a separate backend dependency: if those alone remain unavailable, use “Use demo data” to try simulated operator actions, or see the [backend handoff](frontend/docs/backend-handoff.md).
+
 ## Dashboard and recorded highway demo
 
 - Open / for the interactive map, incident filters, camera evidence and operator controls. Use the explicit demo switch to try simulated workflows; credentials and configuration are in the [frontend README](frontend/README.md).
@@ -31,16 +39,23 @@ Open http://localhost:3000; API docs: http://localhost:8000/docs. Python reads p
 - During the AI replay, the right-hand panel reveals each unique fingerprint on its first detected frame, highlights identities currently in frame, and keeps observed identities available for inspection. Seeking rebuilds the list and matching evidence up to that frame. Keep `observations.jsonl` beside the replay to enable this timing; older artifacts without it show full results with an explicit timing-unavailable label.
 - Real operator sessions and incident workflow persistence require the proposed [backend endpoints](frontend/docs/backend-handoff.md). The [recent PR comparison](frontend/docs/pr-integration.md) explains how the frontend integrates PRs #2 and #3.
 
+## Provider transport and uploaded evidence
+
+Open `/transport` for TII camera snapshots and nearby OSM/NTA data through the main API. The backend includes the [transport adapter](ingestion/transport_adapter/README.md); a separate adapter server is optional. Live, cached and sample results are labelled, and TII image capture times are unknown. Set `NTA_API_KEY` in the backend environment to enable NTA realtime; OSM and TII work independently.
+
+In the stored dashboard, open a camera to upload a snapshot with its actual capture time and read associated detections. Uploads persist when `DATABASE_URL` and the upload directory are persistent. Uploading does not run analysis automatically. Provider browsing remains separate from stored incident evidence so unverified provider capture times and illustrative transit fixtures are not silently recorded as observed incidents.
+
+[Endpoint integration and verification](docs/integration.md)
+
 ## Demo pipeline
 
 With the backend running:
 
 ```sh
-source .venv/bin/activate
-python -m ingestion.run
+.venv/bin/python -m ingestion.run
 ```
 
-This fetches fixture camera/transport data, normalizes it, posts observations, runs the mock analyzer, correlates detections and posts incidents. Refresh the dashboard to view the results. `python -m ingestion.run --dry-run` works offline. `python -m algorithms.run --dry-run` runs the intelligence pipeline independently; `--post` sends results to the API. The demo does not imply real visual inference or live ingestion.
+This fetches fixture camera/transport data, normalizes it, posts observations, runs the mock analyzer, correlates detections and posts incidents. Refresh the dashboard to view the results. `.venv/bin/python -m ingestion.run --dry-run` works offline. `.venv/bin/python -m algorithms.run --dry-run` runs the intelligence pipeline independently; `--post` sends results to the API. The demo does not imply real visual inference or live ingestion.
 
 The runner reads prior incidents before correlation, preserving stable event IDs on repeated runs.
 
@@ -84,8 +99,8 @@ Starts PostgreSQL, API on 8000 and frontend on 3000. The database credentials in
 ## Checks
 
 ```sh
-python -m pytest
-python -m scripts.export_contracts
+.venv/bin/python -m pytest
+.venv/bin/python -m scripts.export_contracts
 cd frontend
 npm run typecheck
 npm run lint

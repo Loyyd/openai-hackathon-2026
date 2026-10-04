@@ -65,4 +65,4 @@ Konrad: supply stable camera_ids and related_observation_ids and define incident
 5. Rerun ingestion/analysis for the same ID, then restart the backend. Resolution must survive both.
 6. Expire a session and verify a failed write returns 401 without changing workflow state.
 
-The current backend can verify map/camera/incident/observation reads only. Real operator persistence and re-ingestion acceptance remains dependent on backend implementation; intercepted browser tests are not evidence of server-side persistence.
+The backend supports map/camera/incident/observation/detection reads, snapshot uploads and persistent records. The provider adapter is exposed through `/api/v1` and the `/transport` page. Real operator persistence and re-ingestion acceptance remains dependent on backend implementation; intercepted browser tests are not evidence of server-side persistence.
