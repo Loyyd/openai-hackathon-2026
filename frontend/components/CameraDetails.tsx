@@ -38,6 +38,8 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
   const [uploadMessage, setUploadMessage] = useState('');
   const [detections, setDetections] = useState<Detection[]>([]);
   const [detectionError, setDetectionError] = useState('');
+  const [detectionLoading, setDetectionLoading] = useState(false);
+  const [detectionRevision, setDetectionRevision] = useState(0);
   const [selected, setSelected] = useState(observationId ?? 'latest');
   const [stream, setStream] = useState<CameraStream | null>(null);
   const [streamStatus, setStreamStatus] = useState('Checking video availability…');
@@ -58,12 +60,13 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
   const evidenceId = observation?.id ?? (selected === 'latest' && newest?.image_url === camera.image_url ? newest.id : undefined);
   useEffect(() => {
     const controller = new AbortController();
-    setDetections([]); setDetectionError('');
+    setDetections([]); setDetectionError(''); setDetectionLoading(Boolean(evidenceId));
     if (evidenceId) void client.detections(evidenceId, controller.signal).then((items) => {
       if (!controller.signal.aborted) setDetections(items);
-    }).catch((error) => { if (!controller.signal.aborted) setDetectionError(errorMessage(error)); });
+    }).catch((error) => { if (!controller.signal.aborted) setDetectionError(errorMessage(error)); })
+      .finally(() => { if (!controller.signal.aborted) setDetectionLoading(false); });
     return () => controller.abort();
-  }, [client, evidenceId, refreshKey]);
+  }, [client, evidenceId, refreshKey, detectionRevision]);
   async function upload(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -88,16 +91,6 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
         <p className="image-caption">Snapshot captured <time dateTime={imageTime}>{dateTime(imageTime)}</time>{selected === 'latest' && observation ? ' · Newer observation' : ''}</p></>}
     <div className="video-status"><span className="muted">{streamStatus}</span>{stream && <button className="secondary-button" onClick={() => { setPlaybackError(false); setPlaying(!playing); }}>{playing ? 'Return to snapshot' : 'Watch live video'}</button>}</div>
     {playbackError && <p className="inline-error" role="status">Video playback failed. Showing the snapshot.</p>}
-    <section className="detail-section"><h3>Detected observations</h3>
-      {detectionError ? <p role="status">{detectionError}</p> : detections.length ? <ul>{detections.map((item) => <li key={item.id}>{item.label} · {Math.round(item.confidence * 100)}% confidence</li>)}</ul> : <p className="muted">No analysis results for this snapshot. Uploading an image does not run AI automatically.</p>}
-    </section>
-    {client.source === 'api' && <form className="detail-section snapshot-upload" onSubmit={(event) => void upload(event)}><h3>Upload snapshot</h3>
-      <label>Snapshot image<input name="snapshot" type="file" accept="image/jpeg,image/png,image/webp" required disabled={uploading} /></label>
-      <label>Captured at (your local time)<input name="captured_at" type="datetime-local" required disabled={uploading} /></label>
-      <p className="muted">JPEG, PNG or WebP, up to 10 MB and 20 megapixels. Older snapshots remain in history.</p>
-      <button className="secondary-button" disabled={uploading}>{uploading ? 'Saving snapshot…' : 'Save snapshot'}</button>
-      {uploadError && <p role="alert">{uploadError}</p>}{uploadMessage && <p role="status">{uploadMessage}</p>}
-    </form>}
     <section className="detail-section"><h3>Observation history <span className="heading-count">{history.observations.length}</span></h3><p className="muted">Newest first. Select an observation to inspect an earlier snapshot.</p>
       {history.error && <div className="notice notice-warning" role="status">{history.error}<button className="text-button" onClick={history.retry}>Retry history</button></div>}
       <div className="observation-list">
@@ -107,5 +100,15 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
       {!history.loading && !history.observations.length && <p className="muted">No observations available.</p>}
       {history.loading && <p role="status" className="muted">Loading observation history…</p>}
     </section>
+    <section className="detail-section"><h3>Detected observations</h3>
+      {detectionLoading ? <p className="muted" role="status">Loading analysis results…</p> : detectionError ? <p className="inline-error" role="status">{detectionError} <button className="text-button" onClick={() => setDetectionRevision((value) => value + 1)}>Retry analysis</button></p> : detections.length ? <ul className="detection-list">{detections.map((item) => <li key={item.id}>{item.label} · {Math.round(item.confidence * 100)}% confidence</li>)}</ul> : <p className="muted">No analysis results for this snapshot. Uploading an image does not run AI automatically.</p>}
+    </section>
+    {client.source === 'api' && <form className="management-section snapshot-upload" onSubmit={(event) => void upload(event)}><h3>Upload snapshot</h3>
+      <label>Snapshot image<input name="snapshot" type="file" accept="image/jpeg,image/png,image/webp" required disabled={uploading} /></label>
+      <label>Captured at (your local time)<input name="captured_at" type="datetime-local" required disabled={uploading} /></label>
+      <p className="muted">JPEG, PNG or WebP, up to 10 MB and 20 megapixels. Older snapshots remain in history.</p>
+      <button className="secondary-button" disabled={uploading}>{uploading ? 'Saving snapshot…' : 'Save snapshot'}</button>
+      {uploadError && <p className="inline-error" role="alert">{uploadError}</p>}{uploadMessage && <p className="save-success" role="status">{uploadMessage}</p>}
+    </form>}
   </>;
 }

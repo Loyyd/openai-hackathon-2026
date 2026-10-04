@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon, type LatLngTuple } from 'leaflet';
-import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { useApplication } from './ApplicationProvider';
 import type { MapProps } from './MapPanel';
 import { dateTime } from '../lib/presentation';
 import type { Location, Selection } from '../types';
@@ -15,7 +16,9 @@ const position = (location: Location): LatLngTuple => [location.latitude, locati
 const valid = (location: Location) => Number.isFinite(location.latitude) && Number.isFinite(location.longitude) && Math.abs(location.latitude) <= 90 && Math.abs(location.longitude) <= 180;
 
 function MapPosition({ selected, fit, coverage }: { selected?: Location; fit: number; coverage: Location[] }) {
+  const { setMapView } = useApplication();
   const map = useMap();
+  useMapEvents({ moveend: () => { const center = map.getCenter(); setMapView({ center: [center.lat, center.lng], zoom: map.getZoom() }); } });
   const latestCoverage = useRef(coverage);
   latestCoverage.current = coverage;
   const latitude = selected?.latitude;
@@ -33,10 +36,22 @@ function MapPosition({ selected, fit, coverage }: { selected?: Location; fit: nu
     observer.observe(map.getContainer());
     return () => observer.disconnect();
   }, [map]);
+  useEffect(() => {
+    const container = map.getContainer();
+    const reduceMotion = (event: KeyboardEvent) => {
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches || event.altKey || event.ctrlKey || event.metaKey) return;
+      const directions: Record<string, [number, number]> = { ArrowLeft: [-80, 0], ArrowRight: [80, 0], ArrowUp: [0, -80], ArrowDown: [0, 80] };
+      const offset = directions[event.key];
+      if (offset) { event.preventDefault(); event.stopImmediatePropagation(); map.panBy(offset.map((value) => value * (event.shiftKey ? 3 : 1)) as [number, number], { animate: false }); }
+    };
+    container.addEventListener('keydown', reduceMotion, true);
+    return () => container.removeEventListener('keydown', reduceMotion, true);
+  }, [map]);
   return null;
 }
 
 export default function CityMap({ cameras, incidents, transport, selection, onSelect, layers, fit }: Props) {
+  const { mapView } = useApplication();
   const [tilesFailed, setTilesFailed] = useState(false);
   const places = useMemo(() => {
     const groups = new Map<string, Place>();
@@ -55,8 +70,8 @@ export default function CityMap({ cameras, incidents, transport, selection, onSe
   const selected = selection?.kind === 'camera' ? cameras.find((item) => item.id === selection.id)?.location : incidents.find((item) => item.id === selection?.id)?.location;
   return <div className="map-wrap">
     {tilesFailed && <div className="tile-warning" role="status">Map tiles unavailable. Markers, lists and details remain available.</div>}
-    <MapContainer center={[53.374, -6.285]} zoom={11} scrollWheelZoom={false} className="city-map">
-      <TileLayer url={tileUrl} attribution={attribution} eventHandlers={{ tileerror: () => setTilesFailed(true), loading: () => setTilesFailed(false) }} />
+    <MapContainer center={mapView.center} zoom={mapView.zoom} scrollWheelZoom={false} className="city-map">
+      <TileLayer className={process.env.NEXT_PUBLIC_MAP_TILE_URL ? 'custom-map-tiles' : 'default-osm-tiles'} url={tileUrl} attribution={attribution} eventHandlers={{ tileerror: () => setTilesFailed(true), loading: () => setTilesFailed(false) }} />
       <MapPosition selected={selected} fit={fit} coverage={[...cameras, ...incidents, ...transport].map((item) => item.location)} />
       {places.map(([key, place]) => {
         const active = Boolean(selection && place.entries.some((item) => item.selection?.id === selection.id && item.selection?.kind === selection.kind));

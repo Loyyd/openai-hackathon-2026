@@ -9,7 +9,8 @@ test('complete collections, severity ordering, filters and unknown event types',
   await expect(page.getByTestId('active-count')).toHaveText('5');
   await expect(page.locator('.incident-card').first()).toContainText('Obstruction at port entrance');
   await expect(page.locator('.incident-card')).toHaveCount(4);
-  await page.getByRole('button', { name: 'View all', exact: true }).click();
+  await page.getByRole('link', { name: 'View all incidents', exact: true }).click();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
   await expect(page.locator('.incident-card')).toHaveCount(5);
   await page.getByLabel('Severity', { exact: true }).selectOption('high');
   await expect(page.locator('.incident-card')).toHaveCount(1);
@@ -20,11 +21,11 @@ test('complete collections, severity ordering, filters and unknown event types',
   await expect(details.getByText('Unexpected signal', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await page.getByLabel('Type', { exact: true }).selectOption('all');
-  await page.getByLabel('Status', { exact: true }).selectOption('resolved');
+  await page.getByRole('group', { name: 'Incident status' }).getByRole('button', { name: 'Resolved', exact: true }).click();
   await expect(page.locator('.incident-card')).toHaveCount(1);
   await page.getByLabel('Search incidents').fill('no match');
   await expect(page.getByText('No incidents match these filters.')).toBeVisible();
-  await page.getByRole('button', { name: 'All cameras' }).click();
+  await page.getByRole('link', { name: 'Cameras', exact: true }).click();
   await expect(page.locator('.camera-card')).toHaveCount(6);
   await page.getByLabel('Search cameras').fill('DCU');
   await expect(page.locator('.camera-card')).toHaveCount(1);
@@ -118,11 +119,14 @@ test('assignment, unassignment, acknowledgment and resolution update all views a
   await page.getByRole('button', { name: 'Refresh data' }).click();
   await expect(page.getByRole('button', { name: 'Refresh data' })).toBeEnabled();
   await expect(page.getByTestId('active-count')).toHaveText('4');
-  await page.getByLabel('Status', { exact: true }).selectOption('resolved');
+  await page.getByRole('link', { name: 'Incidents', exact: true }).click();
+  await page.getByRole('button', { name: 'Filters', exact: true }).click();
+  await page.getByRole('group', { name: 'Incident status' }).getByRole('button', { name: 'Resolved', exact: true }).click();
   await page.getByLabel('Assignee', { exact: true }).selectOption('me');
   await expect(page.locator('.incident-card')).toHaveCount(1);
   await expect(page.locator('.incident-card')).toContainText('Port obstruction updated by ingestion');
   await page.reload();
+  await page.goto('/');
   await expect(page.getByTestId('active-count')).toHaveText('4');
 });
 
@@ -196,6 +200,7 @@ test('initial failure offers explicit demo with persistent simulated actions iso
   await incident.getByRole('button', { name: 'Resolve incident' }).click();
   await expect(incident.getByText('Simulated change saved for this tab.')).toBeVisible();
   await page.reload();
+  await page.goto('/');
   await expect(page.getByTestId('active-count')).toHaveText('4');
   await page.getByRole('button', { name: 'Connect to backend' }).click();
   await expect(page.getByText('Unable to load the dashboard.')).toBeVisible();
@@ -273,6 +278,7 @@ test('polling pauses when hidden, resumes on return, prevents overlap and times 
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   expect(state.mapReads).toBe(initialReads + 2);
   await page.clock.fastForward(10_100);
+  await page.getByRole('button', { name: 'Diagnostics' }).click();
   await expect(page.getByText('The request timed out. Please retry.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('active-count')).toHaveText('5');
   release({ cameras: [], incidents: [], transport: [] });

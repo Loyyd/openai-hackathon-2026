@@ -6,7 +6,7 @@ import { timestamp } from '../lib/presentation';
 import type { CameraObservation, IncidentWorkflow, MapData, UserSummary, WorkflowPatch, WorkflowStatus } from '../types';
 
 // Reused by data and session checks; hidden tabs do no scheduled work.
-function useVisiblePolling(refresh: () => Promise<void>) {
+export function useVisiblePolling(refresh: () => Promise<void>) {
   useEffect(() => {
     const run = () => { if (!document.hidden) void refresh(); };
     run();
@@ -71,7 +71,6 @@ export function useDashboard(client: ApiClient) {
     mounted.current = true;
     return () => { mounted.current = false; pending.current?.abort(); pending.current = null; };
   }, []);
-  useVisiblePolling(refresh);
 
   const saveWorkflow = useCallback(async (id: string, patch: WorkflowPatch) => {
     if (saving.current.has(id)) throw new Error('A change is already being saved.');
@@ -123,7 +122,6 @@ export function useSession(client: ApiClient) {
       if (!controller.signal.aborted && version === epoch.current) { setError('Session unavailable. ' + errorMessage(cause)); setUser(null); setUsers([]); }
     } finally { if (checking.current === controller) checking.current = null; }
   }, [client]);
-  useVisiblePolling(check);
   useEffect(() => () => { epoch.current++; checking.current?.abort(); checking.current = null; }, []);
 
   const authenticate = async (email?: string, password?: string) => {

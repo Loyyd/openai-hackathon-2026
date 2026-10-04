@@ -1,111 +1,28 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '../lib/api';
-import { useDashboard, useSession } from '../hooks/useDashboard';
-import { resolved, sortIncidents } from '../lib/presentation';
-import type { DataSource, Selection } from '../types';
+import { Activity, ArrowUpRight, Camera, CircleAlert, ScanLine } from 'lucide-react';
+import { useApplication } from './ApplicationProvider';
 import { MapPanel } from './MapPanel';
-import { IncidentList, defaultFilters, type IncidentFilters } from './IncidentList';
+import { IncidentQueue } from './IncidentList';
 import { CameraGallery } from './CameraGallery';
-import { DetailDialog } from './DetailDialog';
-import { CameraDetails } from './CameraDetails';
-import { IncidentDetails } from './IncidentDetails';
-import { LoginDialog } from './LoginDialog';
-import { ConnectionStatus } from './ConnectionStatus';
-import { TopBar, navIcons } from './TopBar';
 
-export function Dashboard() {
-  const [source, setSource] = useState<DataSource>(process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' ? 'demo' : 'api');
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('sentinelx.source');
-      if (saved === 'demo' || saved === 'api') setSource(saved);
-    } catch { /* Browsing is still available without session storage. */ }
-    setReady(true);
-  }, []);
-  const changeSource = (value: DataSource) => {
-    try { sessionStorage.setItem('sentinelx.source', value); } catch { /* Selection lasts for this page. */ }
-    setSource(value);
-  };
-  if (!ready) return <main className="initial-loading" role="status">Loading SentinelX…</main>;
-  return <DashboardContent key={source} source={source} onSource={changeSource} />;
+export function WorkspaceHeading({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) {
+  return <div className="workspace-heading"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></div>;
+}
+export function DataBoundary({ children }: { children: React.ReactNode }) {
+  const { dashboard } = useApplication();
+  return dashboard.data ? children : <div className="initial-state" role="status"><Activity size={30} aria-hidden="true" /><h2>{dashboard.error ? 'City data is unavailable' : 'Connecting to the city dataset…'}</h2><p>{dashboard.error ? 'Retry the backend connection or choose demo data in the status bar.' : 'Loading incidents, camera snapshots and transport observations.'}</p></div>;
 }
 
-function DashboardContent({ source, onSource }: { source: DataSource; onSource: (source: DataSource) => void }) {
-  const client = useMemo(() => createClient(source), [source]);
-  const dashboard = useDashboard(client);
-  const session = useSession(client);
-  const [selection, setSelection] = useState<Selection>(null);
-  const [returnIncident, setReturnIncident] = useState<string | null>(null);
-  const [login, setLogin] = useState(false);
-  const [filters, setFilters] = useState<IncidentFilters>(defaultFilters);
-  const [expandedIncidents, setExpandedIncidents] = useState(false);
-  const [expandedCameras, setExpandedCameras] = useState(false);
-  const [section, setSection] = useState('overview');
-  const { data, workflows, workflowStatus } = dashboard;
-  const cameras = data?.cameras ?? [];
-  const incidents = data?.incidents ?? [];
-  const active = incidents.filter((item) => !resolved(item, workflows[item.id]));
-  const matching = incidents.filter((incident) => {
-    const workflow = workflows[incident.id];
-    const isResolved = resolved(incident, workflow);
-    if (filters.status !== 'all' && (filters.status === 'resolved') !== isResolved) return false;
-    if (filters.severity !== 'all' && incident.severity !== filters.severity) return false;
-    if (filters.type !== 'all' && incident.type !== filters.type) return false;
-    if (!(incident.title + ' ' + incident.description + ' ' + incident.location.name + ' ' + incident.type).toLowerCase().includes(filters.query.trim().toLowerCase())) return false;
-    if (filters.assignee === 'unassigned' && (workflowStatus !== 'ready' || workflow?.assignee)) return false;
-    if (filters.assignee === 'me' && (!session.user || workflow?.assignee?.id !== session.user.id)) return false;
-    if (!['all', 'unassigned', 'me'].includes(filters.assignee) && workflow?.assignee?.id !== filters.assignee) return false;
-    return true;
-  }).sort(sortIncidents);
-  const operators = [...new Map([...session.users, ...Object.values(workflows).flatMap((workflow) => workflow.assignee ? [workflow.assignee] : [])].map((user) => [user.id, user])).values()];
-  const selectedIncident = selection?.kind === 'incident' ? incidents.find((item) => item.id === selection.id) : undefined;
-  const selectedCamera = selection?.kind === 'camera' ? cameras.find((item) => item.id === selection.id) : undefined;
-  const select = (next: Selection) => { setReturnIncident(null); setSelection(next); };
-  const navigate = (next: string) => {
-    setSection(next);
-    if (next === 'incidents') setExpandedIncidents(true);
-    if (next === 'cameras') setExpandedCameras(true);
-  };
-  return <main className="shell">
-    <a className="skip-link" href="#overview">Skip to dashboard</a>
-    <TopBar active={section} items={[
-      { key: 'overview', label: 'Map', icon: navIcons.map, href: '#overview', onClick: () => navigate('overview') },
-      { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '#cameras', onClick: () => navigate('cameras') },
-      { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' },
-    ]}>
-      <Link className="header-link" href="/transport">Ireland transport</Link>
-      {session.user ? <><span className="operator-chip"><span className="operator-avatar" aria-hidden="true">{session.user.display_name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><span className="operator-name">{session.user.display_name}{source === 'demo' && <small>Demo operator</small>}</span></span><button className="secondary-button" disabled={session.busy} onClick={() => void session.logout().catch(() => undefined)}>Sign out</button></> : <button className="secondary-button" onClick={() => setLogin(true)}>Operator sign in</button>}
-    </TopBar>
-    <div className="case-band">
-      <div><div className="eyebrow">ACTIVE OVERVIEW</div><h1>Dublin situational awareness</h1></div>
-      <div className="case-meta"><span className="case-id">{source === 'demo' ? 'SYNTHETIC DEMO DATA' : 'BACKEND DATA'}</span><span className={'status-pill' + (dashboard.error ? ' is-offline' : '')}><i />{dashboard.error ? 'OFFLINE' : source === 'demo' ? 'DEMO' : 'LIVE'}</span><button className="refresh-button" onClick={() => void dashboard.refresh()} disabled={dashboard.refreshing}><span className={dashboard.refreshing ? 'refreshing' : ''} aria-hidden="true">↻</span>{dashboard.refreshing ? 'Refreshing…' : 'Refresh data'}</button></div>
-    </div>
-    <div className="page-content" id="overview">
-      <ConnectionStatus source={source} data={data} error={dashboard.error} workflowStatus={workflowStatus} workflowError={dashboard.workflowError} lastSuccess={dashboard.lastSuccess} refreshing={dashboard.refreshing} onRetry={() => void dashboard.refresh()} onSource={onSource} />
-      {session.error && <p className="session-notice" role="status">{session.error}</p>}
-      <section className="stats-grid" aria-label="City status">
-        <article className="stat-card"><span className="stat-icon icon-incidents" aria-hidden="true">⌁</span><div className="stat-label">Active incidents</div><div className="stat-value" data-testid="active-count">{data ? active.length : '—'}</div><div className="stat-foot">{data ? active.filter((item) => ['high', 'critical'].includes(item.severity)).length + ' high priority' : 'Waiting for data'}<span>Across Greater Dublin</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-cameras" aria-hidden="true">⌖</span><div className="stat-label">Camera locations</div><div className="stat-value">{data ? cameras.length : '—'}</div><div className="stat-foot">Snapshot monitoring<span>Provider images</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-transport" aria-hidden="true">⇄</span><div className="stat-label">Transport signals</div><div className="stat-value">{data ? data.transport.length : '—'}</div><div className="stat-foot">Bus &amp; road network<span>Observations</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-confidence" aria-hidden="true">◉</span><div className="stat-label">Average confidence</div><div className="stat-value">{active.length ? Math.round(active.reduce((sum, item) => sum + item.confidence, 0) / active.length * 100) + '%' : '—'}</div><div className="stat-foot">Active incidents<span>Supplied analysis</span></div></article>
-      </section>
-      {data ? <>
-        <div className="content-grid">
-          <MapPanel cameras={cameras} incidents={matching} transport={data.transport} selection={selection} onSelect={select} />
-          <IncidentList incidents={matching} total={incidents.length} types={[...new Set(incidents.map((item) => item.type))].sort()} filters={filters} onFilters={(next) => { setFilters(next); setExpandedIncidents(true); }} expanded={expandedIncidents} onExpand={() => setExpandedIncidents(!expandedIncidents)} onSelect={(id) => select({ kind: 'incident', id })} selectedId={selection?.kind === 'incident' ? selection.id : undefined} workflows={workflows} workflowStatus={workflowStatus} operators={operators} user={session.user} />
-        </div>
-        <CameraGallery cameras={cameras} expanded={expandedCameras} onExpand={() => setExpandedCameras(!expandedCameras)} onSelect={(id) => select({ kind: 'camera', id })} />
-      </> : <div className="initial-state" role="status">{dashboard.error ? 'Retry the backend connection or choose demo data to explore SentinelX.' : 'Connecting to the city dataset…'}</div>}
-      <footer><span className="footer-brand">SENTINEL<span>X</span></span><span>Dublin situational awareness · {source === 'demo' ? 'Synthetic demo' : 'Backend data'}</span><span>Public viewing · Operator management</span></footer>
-    </div>
-    {selection && <DetailDialog key={selection.kind + selection.id} title={selectedIncident?.title ?? selectedCamera?.name ?? 'Record unavailable'} eyebrow={selection.kind === 'incident' ? 'INCIDENT DETAILS' : 'CAMERA DETAILS'} onClose={() => setSelection(null)}>
-      {selectedIncident ? <IncidentDetails incident={selectedIncident} workflow={workflows[selectedIncident.id]} workflowStatus={workflowStatus} cameras={cameras} client={client} session={session} source={source} refreshKey={dashboard.lastSuccess} onLogin={() => setLogin(true)} onCamera={(id, observationId) => { setReturnIncident(selectedIncident.id); setSelection({ kind: 'camera', id, observationId }); }} onSave={dashboard.saveWorkflow} /> :
-        selectedCamera ? <CameraDetails onRefresh={() => void dashboard.refresh()} camera={selectedCamera} observationId={selection.observationId} client={client} refreshKey={dashboard.lastSuccess} onBack={returnIncident ? () => setSelection({ kind: 'incident', id: returnIncident }) : undefined} /> : <p>This record is no longer in the current dataset.</p>}
-    </DetailDialog>}
-    {login && <LoginDialog source={source} session={session} onClose={() => setLogin(false)} />}
-  </main>;
+export function Dashboard() {
+  const app = useApplication();
+  const { data } = app.dashboard;
+  return <>
+    <div className="welcome-row"><WorkspaceHeading eyebrow="DUBLIN, IRELAND / OPERATIONS" title="City overview" description="Your operational picture. The signals that need your attention." /><Link href="/incidents" className="secondary-button">Incident workspace <ArrowUpRight size={16} aria-hidden="true" /></Link></div>
+    <section className="stats-grid" aria-label="City status">
+      {[{ title: 'Active incidents', value: data ? app.active.length : '—', foot: data ? app.active.filter((item) => ['high', 'critical'].includes(item.severity)).length + ' high priority' : 'Waiting for data', icon: CircleAlert, testId: 'active-count', className: 'metric-alert' }, { title: 'Camera locations', value: data ? app.cameras.length : '—', foot: 'Provider snapshot coverage', icon: Camera }, { title: 'Transport signals', value: data ? data.transport.length : '—', foot: 'Bus & road observations', icon: Activity }, { title: 'Average confidence', value: app.active.length ? Math.round(app.active.reduce((sum, item) => sum + item.confidence, 0) / app.active.length * 100) + '%' : '—', foot: 'Supplied analysis · active incidents', icon: ScanLine }].map(({ title, value, foot, icon: Icon, testId, className = '' }) => <article className={'stat-card ' + className} key={title}><div className="stat-label">{title}<Icon size={18} aria-hidden="true" /></div><div className="stat-value" data-testid={testId}>{value}</div><div className="stat-foot">{foot}</div></article>)}
+    </section>
+    <DataBoundary><div className="content-grid overview-grid"><MapPanel cameras={app.cameras} incidents={app.matching} transport={data?.transport ?? []} selection={app.selection} onSelect={app.select} /><IncidentQueue /></div><CameraGallery preview /></DataBoundary>
+  </>;
 }
