@@ -11,3 +11,9 @@ node_modules/
 *.tsbuildinfo
 artifacts/
 backend/uploads/
+*.pt
+output/
+.hoplite/attachments/
+frontend/test-results/
+frontend/playwright-report/
+.playwright-cli/

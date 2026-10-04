@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.api.routes import router
+from backend.app.api.ai_demo import router as ai_demo_router
 from backend.app.database.repository import Repository, make_repository
 from backend.app.services.images import LocalSnapshotFileStore, MemoryImageMetadataStore
 from backend.app.services.api import ResourceNotFound, SentinelXService
@@ -28,6 +29,7 @@ def create_app(repository: Repository | None = None) -> FastAPI:
         return JSONResponse(status_code=404, content={"detail": str(exc)})
 
     app.include_router(router)
+    app.include_router(ai_demo_router)
     return app
 
 
