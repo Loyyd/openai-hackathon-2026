@@ -21,17 +21,18 @@ export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras'
   const [selection, setSelection] = useState<Selection>(null);
   const [filters, setFilters] = useState<IncidentFilters>(defaultFilters);
   const [expandedIncidents, setExpandedIncidents] = useState(false);
-  const refreshing = useRef(false);
+  const pendingRefresh = useRef<{ signal?: AbortSignal } | null>(null);
   const [refreshKey, setRefreshKey] = useState<string | null>(null);
   const refresh = useCallback(async (signal?: AbortSignal) => {
-    if (refreshing.current) return;
-    refreshing.current = true;
+    if (pendingRefresh.current && !pendingRefresh.current.signal?.aborted) return;
+    const pending = { signal };
+    pendingRefresh.current = pending;
     try {
       const [map, state] = await Promise.all([client.map(signal), request<Processing>('/api/processing', { signal })]);
       if (signal?.aborted) return;
       setData(previous => JSON.stringify(previous) === JSON.stringify(map) ? previous : map); setProcessing(state); setError(''); setRefreshKey(new Date().toISOString());
     } catch (cause) { if (!signal?.aborted) setError(errorMessage(cause)); }
-    finally { refreshing.current = false; }
+    finally { if (pendingRefresh.current === pending) pendingRefresh.current = null; }
   }, [client]);
   useEffect(() => {
     const controller = new AbortController();
