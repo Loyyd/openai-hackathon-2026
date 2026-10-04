@@ -38,6 +38,14 @@ Check http://localhost:8000/health directly and http://localhost:3000/backend/he
 - Open /ai using the “AI demo” navigation link to inspect processed highway footage and vehicle fingerprints. Follow the [vehicle pipeline setup](algorithms/vehicles/README.md) to prepare artifacts and the browser replay, then set AI_DEMO_DIR on the backend.
 - Real operator sessions and incident workflow persistence require the proposed [backend endpoints](frontend/docs/backend-handoff.md). The [recent PR comparison](frontend/docs/pr-integration.md) explains how the frontend integrates PRs #2 and #3.
 
+## Provider transport and uploaded evidence
+
+Open `/transport` for TII camera snapshots and nearby OSM/NTA data through the main API. The backend includes the [transport adapter](ingestion/transport_adapter/README.md); a separate adapter server is optional. Live, cached and sample results are labelled, and TII image capture times are unknown. Set `NTA_API_KEY` in the backend environment to enable NTA realtime; OSM and TII work independently.
+
+In the stored dashboard, open a camera to upload a snapshot with its actual capture time and read associated detections. Uploads persist when `DATABASE_URL` and the upload directory are persistent. Uploading does not run analysis automatically. Provider browsing remains separate from stored incident evidence so unverified provider capture times and illustrative transit fixtures are not silently recorded as observed incidents.
+
+[Endpoint integration and verification](docs/integration.md)
+
 ## Demo pipeline
 
 With the backend running:

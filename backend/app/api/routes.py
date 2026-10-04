@@ -92,7 +92,7 @@ async def upload_camera_snapshot(
         raise HTTPException(status_code=422, detail="captured_at must include a timezone")
 
     snapshot_id = uuid4().hex
-    image_url = str(request.url_for("get_snapshot", snapshot_id=snapshot_id))
+    image_url = request.url_for("get_snapshot", snapshot_id=snapshot_id).path
     try:
         return _service(request).upload_snapshot(
             camera_id, captured_at, contents, image_url

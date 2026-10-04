@@ -79,3 +79,14 @@ This verifies the current seeded API, evidence browsing and the missing-service 
 - lib/api.ts: proxy, timeout and typed adapters
 - lib/mock.ts: coherent local fixtures and isolated demo workflows
 - app/globals.css: responsive light green visual system, focus styles and reduced motion
+
+
+## Provider and evidence integration
+
+`/transport` reads TII/OSM/NTA data via the main backend's `/api/v1` routes. It shows provider/catalogue status and snapshot cache status separately, with no fabricated capture timestamps. The camera selector and nearby transport button use the same-origin proxy.
+
+Camera details on `/` include snapshot upload (JPEG/PNG/WebP, 10 MB) and detections for the selected observation. Capture time is entered in the viewer's local timezone and sent as an aware ISO timestamp. Stored snapshot paths are resolved through `/backend` even for older absolute API URLs. Uploading is disabled in local demo mode.
+
+Operator auth/workflow and HLS endpoints are still optional proposed backend contracts; their existing unavailable states are intentional. See `docs/backend-handoff.md` and the repository's `docs/integration.md`.
+
+Development output lives in `.next-dev`; production builds use `.next`. This prevents a build from replacing chunks used by a running development server.

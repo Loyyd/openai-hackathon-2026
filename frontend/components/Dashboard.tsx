@@ -73,7 +73,7 @@ function DashboardContent({ source, onSource }: { source: DataSource; onSource: 
     <a className="skip-link" href="#overview">Skip to dashboard</a>
     <header className="topbar">
       <a className="brand" href="#overview" onClick={() => navigate('overview')} aria-label="SentinelX home" data-focus-home><span className="brand-mark">S<span>×</span></span><span>sentinel<span className="brand-x">x</span></span></a>
-      <nav className="main-nav" aria-label="Main navigation">{['overview', 'incidents', 'cameras'].map((item) => <a key={item} className={section === item ? 'nav-active' : ''} aria-current={section === item ? 'page' : undefined} href={'#' + item} onClick={() => navigate(item)}>{item[0].toUpperCase() + item.slice(1)}{item === 'incidents' && <span className="nav-count">{data ? active.length : '—'}</span>}</a>)}<Link href="/ai">AI demo</Link></nav>
+      <nav className="main-nav" aria-label="Main navigation">{['overview', 'incidents', 'cameras'].map((item) => <a key={item} className={section === item ? 'nav-active' : ''} aria-current={section === item ? 'page' : undefined} href={'#' + item} onClick={() => navigate(item)}>{item[0].toUpperCase() + item.slice(1)}{item === 'incidents' && <span className="nav-count">{data ? active.length : '—'}</span>}</a>)}<Link href="/transport">Ireland transport</Link><Link href="/ai">AI demo</Link></nav>
       <div className="header-right"><span className="header-city">DUBLIN, IE</span>{session.user ? <><span className="operator-name">{session.user.display_name}{source === 'demo' && <small>Demo operator</small>}</span><button className="secondary-button" disabled={session.busy} onClick={() => void session.logout().catch(() => undefined)}>Sign out</button></> : <button className="secondary-button" onClick={() => setLogin(true)}>Operator sign in</button>}</div>
     </header>
     <div className="page-content" id="overview">
@@ -97,7 +97,7 @@ function DashboardContent({ source, onSource }: { source: DataSource; onSource: 
     </div>
     {selection && <DetailDialog key={selection.kind + selection.id} title={selectedIncident?.title ?? selectedCamera?.name ?? 'Record unavailable'} eyebrow={selection.kind === 'incident' ? 'INCIDENT DETAILS' : 'CAMERA DETAILS'} onClose={() => setSelection(null)}>
       {selectedIncident ? <IncidentDetails incident={selectedIncident} workflow={workflows[selectedIncident.id]} workflowStatus={workflowStatus} cameras={cameras} client={client} session={session} source={source} refreshKey={dashboard.lastSuccess} onLogin={() => setLogin(true)} onCamera={(id, observationId) => { setReturnIncident(selectedIncident.id); setSelection({ kind: 'camera', id, observationId }); }} onSave={dashboard.saveWorkflow} /> :
-        selectedCamera ? <CameraDetails camera={selectedCamera} observationId={selection.observationId} client={client} refreshKey={dashboard.lastSuccess} onBack={returnIncident ? () => setSelection({ kind: 'incident', id: returnIncident }) : undefined} /> : <p>This record is no longer in the current dataset.</p>}
+        selectedCamera ? <CameraDetails onRefresh={() => void dashboard.refresh()} camera={selectedCamera} observationId={selection.observationId} client={client} refreshKey={dashboard.lastSuccess} onBack={returnIncident ? () => setSelection({ kind: 'incident', id: returnIncident }) : undefined} /> : <p>This record is no longer in the current dataset.</p>}
     </DetailDialog>}
     {login && <LoginDialog source={source} session={session} onClose={() => setLogin(false)} />}
   </main>;
