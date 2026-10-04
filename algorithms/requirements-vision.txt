@@ -1,0 +1,8 @@
+ultralytics==8.3.228
+opencv-python>=4.10,<5
+numpy>=1.26,<3
+torch>=2.5,<3
+torchvision>=0.20,<1
+Pillow>=10,<13
+lap>=0.5.12,<1
+easyocr==1.7.2
