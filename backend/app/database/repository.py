@@ -1,10 +1,12 @@
 """Repository implementations; routes depend only on the storage protocol."""
 from typing import Any, Protocol
 
-from sqlalchemy import JSON, String, create_engine, select
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+# Import entities so their tables are registered before Base.metadata.create_all().
+from backend.app.models import Base, JSONRecord, entities as _entities
 from shared.demo import CAMERAS, INCIDENTS, OBSERVATIONS, TRANSPORT
 from shared.models import Camera, CameraObservation, Detection, Incident, TransportObservation
 
@@ -35,18 +37,6 @@ class MemoryRepository:
         payload = item.model_dump(mode="json")
         self._items.setdefault(kind, {})[payload["id"]] = payload
         return payload
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class JSONRecord(Base):
-    """Hackathon-friendly JSON row; replace with normalized models as needed."""
-    __tablename__ = "sentinelx_records"
-    kind: Mapped[str] = mapped_column(String(32), primary_key=True)
-    id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
 
 
 class SQLAlchemyRepository:
