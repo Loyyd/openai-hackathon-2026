@@ -7,6 +7,8 @@ import json
 import math
 import os
 import threading
+import re
+from uuid import uuid4
 import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,7 +18,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data"
-CACHE = ROOT / "cache"
+CACHE = Path(os.environ.get("TRANSPORT_CACHE_DIR", str(ROOT.parents[1] / "output" / "transport-cache")))
 SAMPLE = DATA / "sample.json"
 CAMERAS_URL = "https://iretg.carsprogram.org/cameras_v1/api/cameras"
 NTA_FEED_URL = os.environ.get("NTA_FEED_URL", "https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json")
@@ -26,6 +28,8 @@ CAMERA_TTL = 30
 TRANSIT_TTL = 60
 _memory: dict[str, tuple[float, object]] = {}
 _lock = threading.Lock()
+_nta_lock = threading.Lock()
+_nta_cached: tuple[float, dict | None] | None = None
 
 
 def now() -> str:
@@ -36,7 +40,7 @@ def get_json(url: str, headers: dict[str, str] | None = None, data: bytes | None
     request_headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     request_headers.update(headers or {})
     request = Request(url, headers=request_headers, data=data)
-    with urlopen(request, timeout=12) as response:
+    with urlopen(request, timeout=6) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -49,7 +53,7 @@ def cache_read(path: Path):
 
 def cache_write(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temp = path.with_suffix(path.suffix + ".tmp")
+    temp = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     temp.write_text(json.dumps(value, ensure_ascii=False), encoding="utf-8")
     temp.replace(path)
 
@@ -153,7 +157,19 @@ def nta_realtime(lat: float, lon: float, radius: int) -> dict:
     key = os.environ.get("NTA_API_KEY")
     if not key:
         return {"status": "not_configured", "vehicles": [], "delays": [], "alerts": []}
-    feed = get_json(NTA_FEED_URL, {"x-api-key": key})
+    # NTA's request interval applies to the whole feed, across all locations.
+    global _nta_cached
+    with _nta_lock:
+        if _nta_cached is None or time.monotonic() - _nta_cached[0] >= TRANSIT_TTL:
+            try:
+                feed = get_json(NTA_FEED_URL, {"x-api-key": key})
+            except Exception:
+                _nta_cached = (time.monotonic(), None)
+                raise
+            _nta_cached = (time.monotonic(), feed)
+        feed = _nta_cached[1]
+    if feed is None:
+        return {"status": "unavailable", "vehicles": [], "delays": [], "alerts": []}
     # Some API gateways wrap the standard FeedMessage in a data object.
     if "entity" not in feed and isinstance(feed.get("data"), dict):
         feed = feed["data"]
@@ -239,7 +255,15 @@ def nearby_data(lat: float, lon: float, radius: int) -> dict:
         value = cache_read(path)
         if value is None:
             sample = cache_read(SAMPLE) or {}
-            nearby = sample.get("nearby", {})
+            nearby = dict(sample.get("nearby", {}))
+            # Bundled fixtures belong to their original coordinates, not every query.
+            for field in ("stops", "vehicles"):
+                nearby[field] = [dict(item, distance_m=round(distance_m(lat, lon, item["latitude"], item["longitude"])))
+                                 for item in nearby.get(field, [])
+                                 if item.get("latitude") is not None and item.get("longitude") is not None
+                                 and distance_m(lat, lon, item["latitude"], item["longitude"]) <= radius]
+            if not nearby.get("stops") and not nearby.get("vehicles"):
+                nearby.update(routes=[], delays=[], alerts=[])
             value = {
                 "schema_version": "1.0.0", "generated_at": now(), "mode": "sample",
                 "query": {"latitude": lat, "longitude": lon, "radius_m": radius},
@@ -250,10 +274,40 @@ def nearby_data(lat: float, lon: float, radius: int) -> dict:
             }
         else:
             value["mode"] = "cached"
+            if value.get("realtime_status") == "live":
+                value["realtime_status"] = "cached"
             value["warning"] = "Nearby live data unavailable; serving last cached response."
     with _lock:
         _memory[cache_key] = (time.time(), value)
     return value
+
+
+def camera_snapshot(camera_id: str) -> tuple[bytes, str, str]:
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", camera_id):
+        raise LookupError("Unknown camera")
+    camera = next((c for c in camera_catalog()["cameras"] if c["id"] == camera_id), None)
+    if not camera or not camera["latest_snapshot"]["url"]:
+        raise LookupError("Camera or snapshot not found")
+    snapshot_path = CACHE / "snapshots" / f"camera-{camera_id}"
+    metadata_path = snapshot_path.with_suffix(".json")
+    try:
+        request = Request(camera["latest_snapshot"]["url"], headers={"User-Agent": USER_AGENT})
+        with urlopen(request, timeout=6) as response:
+            image = response.read(10 * 1024 * 1024 + 1)
+            content_type = response.headers.get("Content-Type", "image/jpeg").split(";")[0]
+        if len(image) > 10 * 1024 * 1024 or content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise ValueError("Unsupported snapshot response")
+        snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+        temp = snapshot_path.with_name(f".{snapshot_path.name}.{uuid4().hex}.tmp")
+        temp.write_bytes(image)
+        temp.replace(snapshot_path)
+        cache_write(metadata_path, {"content_type": content_type})
+        return image, content_type, "live"
+    except Exception:
+        if snapshot_path.is_file():
+            metadata = cache_read(metadata_path) or {}
+            return snapshot_path.read_bytes(), metadata.get("content_type", "image/jpeg"), "stale-cache"
+        return (DATA / "snapshots" / "offline-placeholder.svg").read_bytes(), "image/svg+xml", "unavailable-placeholder"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -285,25 +339,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(nearby_data(lat, lon, radius))
         if parsed.path.startswith("/api/v1/cameras/") and parsed.path.endswith("/snapshot"):
             camera_id = parsed.path.split("/")[-2]
-            camera = next((c for c in camera_catalog()["cameras"] if c["id"] == camera_id), None)
-            if not camera or not camera["latest_snapshot"]["url"]:
-                return self.send_json({"error": "Camera or snapshot not found."}, 404)
-            snapshot_path = DATA / "snapshots" / f"camera-{camera_id}.jpg"
-            snapshot_status = "live"
             try:
-                request = Request(camera["latest_snapshot"]["url"], headers={"User-Agent": USER_AGENT})
-                with urlopen(request, timeout=10) as response:
-                    image = response.read()
-                    content_type = response.headers.get("Content-Type", "image/jpeg")
-                snapshot_path.parent.mkdir(parents=True, exist_ok=True)
-                snapshot_path.write_bytes(image)
-            except Exception:
-                if snapshot_path.exists():
-                    image = snapshot_path.read_bytes(); content_type = "image/jpeg"; snapshot_status = "stale-cache"
-                else:
-                    image = (DATA / "snapshots" / "offline-placeholder.svg").read_bytes()
-                    content_type = "image/svg+xml; charset=utf-8"
-                    snapshot_status = "unavailable-placeholder"
+                image, content_type, snapshot_status = camera_snapshot(camera_id)
+            except LookupError:
+                return self.send_json({"error": "Camera or snapshot not found."}, 404)
             self.send_response(200); self.send_header("Content-Type", content_type)
             self.send_header("X-Snapshot-Status", snapshot_status)
             self.send_header("Cache-Control", "public, max-age=15"); self.send_header("Content-Length", str(len(image)))

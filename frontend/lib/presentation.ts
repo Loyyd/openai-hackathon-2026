@@ -39,3 +39,12 @@ export function knownDemo(data: MapData): boolean {
 export function newestTimestamp(values: string[]): string | undefined {
   return values.filter((value) => timestamp(value)).sort((a, b) => timestamp(b) - timestamp(a))[0];
 }
+
+// Snapshot records are portable across local ports, Docker and deployments.
+export function snapshotUrl(value: string): string {
+  try {
+    const url = new URL(value, 'http://local.invalid');
+    if (/^\/api\/snapshots\/[a-f0-9]{32}$/.test(url.pathname)) return '/backend' + url.pathname;
+  } catch { /* Let the image component handle malformed provider URLs. */ }
+  return value;
+}

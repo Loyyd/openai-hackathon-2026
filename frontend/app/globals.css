@@ -243,3 +243,11 @@ footer { display: flex; align-items: center; justify-content: space-between; fle
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+.snapshot-upload { display: grid; gap: 12px; }
+.snapshot-upload label, .provider-picker { display: grid; gap: 8px; }
+.snapshot-upload input, .provider-picker select { max-width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #172033; }
+.provider-picker { margin: 20px 0; max-width: 560px; }
+.provider-panel { padding: 20px; min-width: 0; }
+.provider-panel ul { padding-left: 20px; max-height: 240px; overflow: auto; }
+.provider-panel h3 { margin-top: 20px; }

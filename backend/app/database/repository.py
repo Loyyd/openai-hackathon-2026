@@ -54,8 +54,9 @@ class MemoryRepository:
     def save_snapshot(self, observation: CameraObservation, snapshot: dict[str, Any]) -> None:
         self.upsert("observations", observation)
         camera = self._items["cameras"][observation.camera_id]
-        camera["image_url"] = snapshot["image_url"]
-        camera["last_updated"] = observation.timestamp.isoformat().replace("+00:00", "Z")
+        if observation.timestamp >= datetime.fromisoformat(camera["last_updated"].replace("Z", "+00:00")):
+            camera["image_url"] = snapshot["image_url"]
+            camera["last_updated"] = observation.timestamp.isoformat().replace("+00:00", "Z")
         self._snapshots[snapshot["id"]] = dict(snapshot)
 
     def get_snapshot(self, snapshot_id: str) -> dict[str, Any] | None:
@@ -69,7 +70,24 @@ class SQLAlchemyRepository:
             options.update(connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.engine = create_engine(database_url, **options)
         Base.metadata.create_all(self.engine)
+        self._migrate_legacy()
         self._seed()
+
+    def _migrate_legacy(self) -> None:
+        """Copy pre-PR7 JSON rows once, without overwriting newer typed records."""
+        contracts = {"cameras": Camera, "observations": CameraObservation,
+                     "detections": Detection, "incidents": Incident}
+        with Session(self.engine) as session, session.begin():
+            for kind, contract in contracts.items():
+                for legacy in session.scalars(select(JSONRecord).where(JSONRecord.kind == kind)).all():
+                    if session.get(self._model_for(kind), legacy.id) is None:
+                        payload = contract.model_validate(legacy.payload).model_dump(mode="json")
+                        if "location" in payload:
+                            location = session.get(LocationModel, payload["location"]["id"])
+                            if location is not None:
+                                payload["location"] = self._location_payload(location)
+                        self._upsert_typed(session, kind, payload)
+                session.flush()
 
     def _seed(self) -> None:
         with Session(self.engine) as session:
@@ -138,8 +156,9 @@ class SQLAlchemyRepository:
             camera = session.get(CameraModel, observation.camera_id)
             if camera is None:
                 raise ValueError("Camera must exist before storing a snapshot")
-            camera.image_url = snapshot["image_url"]
-            camera.last_updated = observation.timestamp
+            if observation.timestamp >= self._as_aware(camera.last_updated):
+                camera.image_url = snapshot["image_url"]
+                camera.last_updated = observation.timestamp
             row = session.get(SnapshotModel, snapshot["id"])
             is_new = row is None
             if row is None:

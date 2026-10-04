@@ -8,6 +8,7 @@ __pycache__/
 *.db
 node_modules/
 .next/
+.next-dev/
 *.tsbuildinfo
 artifacts/
 backend/uploads/
@@ -17,3 +18,4 @@ output/
 frontend/test-results/
 frontend/playwright-report/
 .playwright-cli/
+frontend/next-env.d.ts

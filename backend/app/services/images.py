@@ -1,5 +1,9 @@
 """Local snapshot file storage plus the existing in-memory metadata adapter."""
+from io import BytesIO
 from pathlib import Path
+import warnings
+
+from PIL import Image, UnidentifiedImageError
 from typing import Any, Protocol
 
 
@@ -45,6 +49,17 @@ class LocalSnapshotFileStore:
             raise ValueError("Image exceeds the 10 MB upload limit")
 
         content_type, suffix = self._detect_format(contents)
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(BytesIO(contents)) as image:
+                    if image.width * image.height > 20_000_000:
+                        raise ValueError("Image exceeds the 20 megapixel limit")
+                    image.verify()
+                with Image.open(BytesIO(contents)) as image:
+                    image.load()
+        except (UnidentifiedImageError, OSError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
+            raise ValueError("Uploaded image is invalid or cannot be decoded") from exc
         storage_key = f"{snapshot_id}{suffix}"
         destination = self.root / storage_key
         temporary = self.root / f".{storage_key}.tmp"

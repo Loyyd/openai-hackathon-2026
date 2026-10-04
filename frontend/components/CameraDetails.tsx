@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import type Hls from 'hls.js';
-import type { ApiClient } from '../lib/api';
+import { errorMessage, type ApiClient } from '../lib/api';
 import { dateTime, timestamp } from '../lib/presentation';
 import { useObservations } from '../hooks/useDashboard';
-import type { Camera, CameraStream } from '../types';
+import type { Camera, CameraStream, Detection } from '../types';
 import { Snapshot } from './Snapshot';
 
 function StreamPlayer({ stream, onError }: { stream: CameraStream; onError: () => void }) {
@@ -31,8 +31,13 @@ function StreamPlayer({ stream, onError }: { stream: CameraStream; onError: () =
   return <video ref={ref} className="stream-video" aria-label="Selected camera live video" autoPlay muted playsInline controls onError={onError} />;
 }
 
-export function CameraDetails({ camera, observationId, client, refreshKey, onBack }: { camera: Camera; observationId?: string; client: ApiClient; refreshKey: string | null; onBack?: () => void }) {
+export function CameraDetails({ camera, observationId, client, refreshKey, onBack, onRefresh }: { camera: Camera; observationId?: string; client: ApiClient; refreshKey: string | null; onBack?: () => void; onRefresh?: () => void }) {
   const history = useObservations(client, [camera.id], refreshKey);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [detections, setDetections] = useState<Detection[]>([]);
+  const [detectionError, setDetectionError] = useState('');
   const [selected, setSelected] = useState(observationId ?? 'latest');
   const [stream, setStream] = useState<CameraStream | null>(null);
   const [streamStatus, setStreamStatus] = useState('Checking video availability…');
@@ -50,6 +55,31 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
   const observation = selected === 'latest' ? newest && timestamp(newest.timestamp) > timestamp(camera.last_updated) ? newest : undefined : history.observations.find((item) => item.id === selected);
   const missing = selected !== 'latest' && !observation;
   const imageTime = observation?.timestamp ?? camera.last_updated;
+  const evidenceId = observation?.id ?? (selected === 'latest' && newest?.image_url === camera.image_url ? newest.id : undefined);
+  useEffect(() => {
+    const controller = new AbortController();
+    setDetections([]); setDetectionError('');
+    if (evidenceId) void client.detections(evidenceId, controller.signal).then((items) => {
+      if (!controller.signal.aborted) setDetections(items);
+    }).catch((error) => { if (!controller.signal.aborted) setDetectionError(errorMessage(error)); });
+    return () => controller.abort();
+  }, [client, evidenceId, refreshKey]);
+  async function upload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const file = data.get('snapshot') as File;
+    const capturedAt = String(data.get('captured_at'));
+    if (!file?.size || !capturedAt) { setUploadError('Choose an image and its capture time.'); return; }
+    if (file.size > 10 * 1024 * 1024) { setUploadError('Choose an image smaller than 10 MB.'); return; }
+    setUploading(true); setUploadError(''); setUploadMessage('');
+    try {
+      const saved = await client.uploadSnapshot(camera.id, file, new Date(capturedAt).toISOString());
+      setSelected(saved.id); setPlaying(false); history.retry(); onRefresh?.(); form.reset();
+      setUploadMessage('Snapshot saved. Analysis results appear after processing.');
+    } catch (error) { setUploadError(errorMessage(error)); }
+    finally { setUploading(false); }
+  }
   return <>
     {onBack && <button className="text-button back-button" onClick={onBack}>← Back to incident</button>}
     <div className="detail-tags"><span className="badge">{camera.provider}</span><span className="badge">{camera.location.name}</span></div>
@@ -58,6 +88,16 @@ export function CameraDetails({ camera, observationId, client, refreshKey, onBac
         <p className="image-caption">Snapshot captured <time dateTime={imageTime}>{dateTime(imageTime)}</time>{selected === 'latest' && observation ? ' · Newer observation' : ''}</p></>}
     <div className="video-status"><span className="muted">{streamStatus}</span>{stream && <button className="secondary-button" onClick={() => { setPlaybackError(false); setPlaying(!playing); }}>{playing ? 'Return to snapshot' : 'Watch live video'}</button>}</div>
     {playbackError && <p className="inline-error" role="status">Video playback failed. Showing the snapshot.</p>}
+    <section className="detail-section"><h3>Detected observations</h3>
+      {detectionError ? <p role="status">{detectionError}</p> : detections.length ? <ul>{detections.map((item) => <li key={item.id}>{item.label} · {Math.round(item.confidence * 100)}% confidence</li>)}</ul> : <p className="muted">No analysis results for this snapshot. Uploading an image does not run AI automatically.</p>}
+    </section>
+    {client.source === 'api' && <form className="detail-section snapshot-upload" onSubmit={(event) => void upload(event)}><h3>Upload snapshot</h3>
+      <label>Snapshot image<input name="snapshot" type="file" accept="image/jpeg,image/png,image/webp" required disabled={uploading} /></label>
+      <label>Captured at (your local time)<input name="captured_at" type="datetime-local" required disabled={uploading} /></label>
+      <p className="muted">JPEG, PNG or WebP, up to 10 MB and 20 megapixels. Older snapshots remain in history.</p>
+      <button className="secondary-button" disabled={uploading}>{uploading ? 'Saving snapshot…' : 'Save snapshot'}</button>
+      {uploadError && <p role="alert">{uploadError}</p>}{uploadMessage && <p role="status">{uploadMessage}</p>}
+    </form>}
     <section className="detail-section"><h3>Observation history <span className="heading-count">{history.observations.length}</span></h3><p className="muted">Newest first. Select an observation to inspect an earlier snapshot.</p>
       {history.error && <div className="notice notice-warning" role="status">{history.error}<button className="text-button" onClick={history.retry}>Retry history</button></div>}
       <div className="observation-list">

@@ -8,3 +8,10 @@
 .env.*
 artifacts
 *.db
+
+output
+*.pt
+backend/uploads
+ingestion/transport_adapter/cache
+
+**/.next-dev

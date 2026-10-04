@@ -4,23 +4,22 @@ A small, dependency-free Python service that gives a frontend or backend one con
 
 ## Run it
 
-```sh
-cd ireland-transport-data-kit
-python3 server.py
-```
+The adapter is included in the main FastAPI application. Start `./scripts/run_backend.sh --reload` from the repository root, start the frontend, and open `/transport`. The page uses the same-origin `/backend/api/v1/...` routes. No separate port or browser API key is required.
 
-It listens on `http://127.0.0.1:8787`. Set `HOST=0.0.0.0` when the team needs to access it from another device. Set `PORT` to change the port.
+For independent adapter development, run `python3 -m ingestion.transport_adapter.server` from the repository root. This serves the same provider routes on `http://127.0.0.1:8787`; `HOST` and `PORT` can override that standalone listener.
 
-For live NTA data, set `NTA_API_KEY` in the server environment. Apply for a key through the [NTA developer portal](https://developer.nationaltransport.ie/). The server keeps the key on the backend and requests the combined JSON feed at `https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json`. It extracts vehicle positions and trip stop delays from that feed. The NTA usage policy says to respect a 60 second request interval per key, so this adapter caches nearby responses for 60 seconds. You can override the URL with `NTA_FEED_URL` if your subscription portal gives you a different production endpoint.
+Runtime caches go to `output/transport-cache`, or `TRANSPORT_CACHE_DIR`. Bundled `data/sample.json` is an explicitly labelled fallback. The older files in `cache/` are historical reference data and are not used as fresh runtime caches. Snapshot capture time remains unknown; the UI distinguishes provider retrieval, stale cached images, and offline placeholders.
+
+For live NTA data, set `NTA_API_KEY` in the server environment. Apply for a key through the [NTA developer portal](https://developer.nationaltransport.ie/). The server keeps the key on the backend and requests the combined JSON feed at `https://api.nationaltransport.ie/gtfsr/v2/gtfsr?format=json`. It extracts vehicle positions and trip stop delays from that feed. The NTA usage policy says to respect a 60 second request interval per key, so this adapter caches the shared NTA feed for 60 seconds across all coordinates, including failed attempts, as well as caching nearby responses. You can override the URL with `NTA_FEED_URL` if your subscription portal gives you a different production endpoint.
 
 Set the key in the same terminal before starting the service (keep it private):
 
 ```sh
 export NTA_API_KEY='your-primary-key'
-python3 server.py
+python3 -m ingestion.transport_adapter.server
 ```
 
-In PowerShell, use `$env:NTA_API_KEY = "your-primary-key"` and then `python server.py`.
+In PowerShell, use `$env:NTA_API_KEY = "your-primary-key"` and then `python -m ingestion.transport_adapter.server`.
 
 ## Endpoints
 
@@ -31,7 +30,7 @@ In PowerShell, use `$env:NTA_API_KEY = "your-primary-key"` and then `python serv
 | `GET /api/v1/cameras/{camera_id}/snapshot` | Proxies the current still image and writes a local last-good image cache |
 | `GET /api/v1/nearby?lat=53.35&lon=-6.26&radius_m=1500` | Nearby OSM bus stops and bus-route relations plus nearby NTA vehicles and matched trip delay, if configured |
 
-`radius_m` is clamped to 100–5000 metres. The nearby endpoint reports the feed state in `mode` and `realtime_status`. Check `warning` when present. Camera records are cached in `cache/cameras.json`; nearby results are cached by rounded coordinate and radius under `cache/`.
+`radius_m` is clamped to 100–5000 metres. The nearby endpoint reports the feed state in `mode` and `realtime_status`. Check `warning` when present. Camera records are cached in `output/transport-cache/cameras.json`; nearby results are cached by rounded coordinate and radius under the runtime cache directory.
 
 ## Shared data shape
 
