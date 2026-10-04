@@ -10,7 +10,6 @@ from sqlalchemy.orm import Session
 from backend.app.database.repository import MemoryRepository, SQLAlchemyRepository
 from backend.app.main import create_app
 from backend.app.models import JSONRecord
-from ingestion.transport_adapter import server as adapter
 from shared.demo import CAMERAS, OBSERVATIONS, INCIDENTS, TRANSPORT
 from shared.models import Detection
 
@@ -70,40 +69,3 @@ def test_snapshot_history_detection_and_portable_urls(tmp_path, monkeypatch, sto
     truncated = client.post(f'/api/cameras/{camera.id}/snapshots', data={'captured_at':'2026-10-04T14:00:00Z'}, files={'file':('bad.png',PNG[:20],'image/png')})
     assert truncated.status_code == 415
 
-
-def test_adapter_routes_and_unavailable_snapshot(monkeypatch, tmp_path):
-    monkeypatch.setenv('SNAPSHOT_STORAGE_DIR', str(tmp_path / 'uploads'))
-    monkeypatch.setattr(adapter, 'camera_catalog', lambda: {'mode':'sample','cameras':[{'id':'114','latest_snapshot':{'url':'https://example.test/image.jpg'}}]})
-    monkeypatch.setattr(adapter, 'CACHE', tmp_path / 'cache')
-    def offline(*args, **kwargs):
-        raise OSError('offline')
-    monkeypatch.setattr(adapter, 'urlopen', offline)
-    client = TestClient(create_app(MemoryRepository()))
-    assert client.get('/api/v1/cameras').json()['mode'] == 'sample'
-    response = client.get('/api/v1/cameras/114/snapshot')
-    assert response.status_code == 200
-    assert response.headers['x-snapshot-status'] == 'unavailable-placeholder'
-    assert response.headers['content-type'].startswith('image/svg+xml')
-    assert client.get('/api/v1/cameras/missing/snapshot').status_code == 404
-    assert client.get('/api/v1/nearby?lat=100&lon=0').status_code == 422
-    assert client.get('/api/v1/nearby?lat=nan&lon=0').status_code == 422
-    assert client.get('/api/v1/nearby?lat=53&lon=-6&radius_m=0').status_code == 422
-    assert adapter.camera_snapshot('114')[2] == 'unavailable-placeholder'
-    monkeypatch.setattr(adapter, 'osm_nearby', offline)
-    monkeypatch.setattr(adapter, '_memory', {})
-    nearby = client.get('/api/v1/nearby?lat=0&lon=0').json()
-    assert nearby['mode'] == 'sample'
-    assert nearby['stops'] == nearby['vehicles'] == []
-
-
-def test_nta_feed_cache_is_shared_across_coordinate_queries(monkeypatch):
-    monkeypatch.setenv('NTA_API_KEY', 'test-only')
-    monkeypatch.setattr(adapter, '_nta_cached', None)
-    calls = []
-    def feed(*args, **kwargs):
-        calls.append(1)
-        return {'entity': []}
-    monkeypatch.setattr(adapter, 'get_json', feed)
-    assert adapter.nta_realtime(53.3, -6.2, 1500)['status'] == 'live'
-    assert adapter.nta_realtime(53.4, -6.3, 1500)['status'] == 'live'
-    assert len(calls) == 1

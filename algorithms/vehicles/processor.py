@@ -25,7 +25,7 @@ class VehicleProcessor:
 
     def process_frame(self, image: np.ndarray, camera_id: str = "DEMO_CAM_01",
                       timestamp: float = 0.0) -> dict:
-        detections = self.detector.detect(image)
+        detections = self.detector.detect_snapshot(image) if getattr(self, "snapshot_mode", False) else self.detector.detect(image)
         vehicles = []
         occupied: set[str] = set()
         for detection in detections:
@@ -56,6 +56,13 @@ class VehicleProcessor:
                         has_embedding=fingerprint.embedding is not None)
             vehicles.append(item)
         return {"camera_id": camera_id, "timestamp": timestamp, "vehicles": vehicles}
+
+    def process_snapshot(self, image, camera_id, timestamp):
+        self.snapshot_mode = True
+        try:
+            return self.process_frame(image, camera_id, timestamp)
+        finally:
+            self.snapshot_mode = False
 
 
 def annotate(image: np.ndarray, result: dict) -> np.ndarray:

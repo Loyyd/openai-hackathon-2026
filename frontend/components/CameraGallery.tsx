@@ -17,6 +17,6 @@ export function CameraGallery({ cameras, expanded, onExpand, onSelect }: { camer
       <span className="camera-info"><strong>{camera.name}</strong><span>{camera.location.name}</span><span className="camera-meta"><span>{camera.provider}</span><time dateTime={camera.last_updated} title={dateTime(camera.last_updated)}>{timeAgo(camera.last_updated)}</time></span></span>
     </button>)}</div>
     {!matches.length && <div className="empty-state">{cameras.length ? 'No cameras match your search.' : 'No cameras in this dataset.'}</div>}
-    <p className="collection-summary">Showing {visible.length} of {matches.length} cameras · Image times are supplied by the provider.</p>
+    <p className="collection-summary">Showing {visible.length} of {matches.length} cameras · TII timestamps show retrieval time; provider capture time is unknown.</p>
   </section>;
 }

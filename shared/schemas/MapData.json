@@ -162,87 +162,6 @@
       ],
       "title": "Location",
       "type": "object"
-    },
-    "TransportObservation": {
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "title": "Id",
-          "type": "string"
-        },
-        "provider": {
-          "title": "Provider",
-          "type": "string"
-        },
-        "type": {
-          "title": "Type",
-          "type": "string"
-        },
-        "route": {
-          "title": "Route",
-          "type": "string"
-        },
-        "vehicle_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Vehicle Id"
-        },
-        "location": {
-          "$ref": "#/$defs/Location"
-        },
-        "timestamp": {
-          "format": "date-time",
-          "title": "Timestamp",
-          "type": "string"
-        },
-        "speed": {
-          "anyOf": [
-            {
-              "minimum": 0,
-              "type": "number"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Speed"
-        },
-        "delay_seconds": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Delay Seconds"
-        },
-        "metadata": {
-          "additionalProperties": true,
-          "title": "Metadata",
-          "type": "object"
-        }
-      },
-      "required": [
-        "id",
-        "provider",
-        "type",
-        "route",
-        "location",
-        "timestamp"
-      ],
-      "title": "TransportObservation",
-      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -260,19 +179,11 @@
       },
       "title": "Incidents",
       "type": "array"
-    },
-    "transport": {
-      "items": {
-        "$ref": "#/$defs/TransportObservation"
-      },
-      "title": "Transport",
-      "type": "array"
     }
   },
   "required": [
     "cameras",
-    "incidents",
-    "transport"
+    "incidents"
   ],
   "title": "MapData",
   "type": "object"

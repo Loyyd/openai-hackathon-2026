@@ -9,7 +9,7 @@ if [[ ! -x "$sentinelx_python" ]]; then
 The project Python environment is missing. From the repository root, run:
   python3 --version  # Must be Python 3.11 or newer
   python3 -m venv .venv
-  .venv/bin/python -m pip install -r requirements.txt
+  .venv/bin/python -m pip install -r requirements.txt -r algorithms/requirements-vision.txt
 Then retry ./scripts/run_backend.sh --reload.
 EOF
   exit 1
@@ -22,8 +22,8 @@ if ! "$sentinelx_python" -c 'import sys; sys.exit(sys.version_info < (3, 11))'; 
   exit 1
 fi
 
-if ! "$sentinelx_python" -c 'import fastapi, uvicorn, pydantic, sqlalchemy' >/dev/null 2>&1; then
-  printf 'Install backend dependencies from the repository root:\n  .venv/bin/python -m pip install -r requirements.txt\n' >&2
+if ! "$sentinelx_python" -c 'import fastapi, uvicorn, pydantic, sqlalchemy, ultralytics, torchvision' >/dev/null 2>&1; then
+  printf 'Install backend dependencies from the repository root:\n  .venv/bin/python -m pip install -r requirements.txt -r algorithms/requirements-vision.txt\n' >&2
   exit 1
 fi
 

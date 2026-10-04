@@ -33,7 +33,7 @@ export function sortIncidents(a: Incident, b: Incident): number {
 
 export function knownDemo(data: MapData): boolean {
   return data.cameras.some((camera) => /demo|synthetic/i.test(camera.provider)) ||
-    [...data.incidents, ...data.transport].some(({ metadata }) => metadata.demo === true || /demo|synthetic/i.test(String(metadata.source ?? '')));
+    data.incidents.some(({ metadata }) => metadata.demo === true || /demo|synthetic/i.test(String(metadata.source ?? '')));
 }
 
 export function newestTimestamp(values: string[]): string | undefined {

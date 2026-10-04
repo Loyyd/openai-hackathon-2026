@@ -1,5 +1,4 @@
-import { demoLogin, demoLogout, demoMapData, demoObservations, demoSaveWorkflow, demoSession, demoUsers, demoWorkflows } from './mock';
-import type { Camera, CameraObservation, CameraStream, DataSource, Detection, Incident, IncidentWorkflow, MapData, TransportObservation, UserSummary, WorkflowPatch } from '../types';
+import type { Camera, CameraObservation, Detection, Incident, MapData } from '../types';
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); this.name = 'ApiError'; }
@@ -35,9 +34,6 @@ export async function request<T>(path: string, init: RequestInit = {}, timeoutMs
   }
 }
 
-function write<T>(path: string, method: string, value?: unknown): Promise<T> {
-  return request<T>(path, { method, headers: { 'Content-Type': 'application/json' }, body: value === undefined ? undefined : JSON.stringify(value) });
-}
 export const getMap = (signal?: AbortSignal) => request<MapData>('/api/map', { signal });
 export const getCameras = () => request<Camera[]>('/api/cameras');
 export const getCamera = (id: string) => request<Camera>('/api/cameras/' + encodeURIComponent(id));
@@ -52,44 +48,13 @@ export const uploadSnapshot = (id: string, file: File, capturedAt: string) => {
   body.append('captured_at', capturedAt);
   return request<CameraObservation>('/api/cameras/' + encodeURIComponent(id) + '/snapshots', { method: 'POST', body }, 30_000);
 };
-export const getTransport = () => request<TransportObservation[]>('/api/transport');
-export const postObservation = (value: CameraObservation) => write<CameraObservation>('/api/observations', 'POST', value);
-export const postDetection = (value: Detection) => write<Detection>('/api/detections', 'POST', value);
-export const postIncident = (value: Incident) => write<Incident>('/api/incidents', 'POST', value);
-
-export function createClient(source: DataSource) {
-  const demo = source === 'demo';
+export function createClient() {
   return {
-    source,
-    detections: async (id: string, signal?: AbortSignal) => demo ? [] as Detection[] : getObservationDetections(id, signal),
-    uploadSnapshot: async (id: string, file: File, capturedAt: string) => {
-      if (demo) throw new Error("Connect to the backend to save snapshots.");
-      return uploadSnapshot(id, file, capturedAt);
-    },
-    map: async (signal?: AbortSignal) => demo ? structuredClone(demoMapData) : getMap(signal),
-    observations: async (id: string, signal?: AbortSignal) => demo ? demoObservations.filter((item) => item.camera_id === id) : getCameraObservations(id, signal),
-    workflows: async (signal?: AbortSignal) => demo ? demoWorkflows() : request<IncidentWorkflow[]>('/api/incident-workflows', { signal }),
-    me: async (signal?: AbortSignal): Promise<UserSummary | null> => {
-      if (demo) return demoSession();
-      try { return await request<UserSummary>('/api/auth/me', { signal }); }
-      catch (error) { if (error instanceof ApiError && error.status === 401) return null; throw error; }
-    },
-    login: async (email: string, password: string) => {
-      if (demo) return demoLogin(email, password);
-      try { return await write<UserSummary>('/api/auth/login', 'POST', { email, password }); }
-      catch (error) {
-        if (error instanceof ApiError && error.status === 401) throw new Error('Email or password is incorrect.');
-        throw error;
-      }
-    },
-    logout: async () => demo ? demoLogout() : write<void>('/api/auth/logout', 'POST'),
-    users: async (signal?: AbortSignal) => demo ? demoUsers() : request<UserSummary[]>('/api/users', { signal }),
-    saveWorkflow: async (id: string, patch: WorkflowPatch) => demo ? demoSaveWorkflow(id, patch) : write<IncidentWorkflow>('/api/incidents/' + encodeURIComponent(id) + '/workflow', 'PATCH', patch),
-    stream: async (id: string, signal?: AbortSignal): Promise<CameraStream | null> => {
-      if (demo) return null;
-      try { return await request<CameraStream>('/api/cameras/' + encodeURIComponent(id) + '/stream', { signal }); }
-      catch (error) { if (error instanceof ApiError && error.status === 404) return null; throw error; }
-    },
+    source: 'api' as const,
+    detections: getObservationDetections,
+    uploadSnapshot,
+    map: getMap,
+    observations: getCameraObservations,
   };
 }
 export type ApiClient = ReturnType<typeof createClient>;

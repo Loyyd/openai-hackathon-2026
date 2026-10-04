@@ -48,7 +48,7 @@ class SentinelXService:
         ]
 
     def map_data(self) -> dict[str, list[dict[str, Any]]]:
-        return {kind: self.list(kind) for kind in ("cameras", "incidents", "transport")}
+        return {kind: self.list(kind) for kind in ("cameras", "incidents")}
 
     def upload_snapshot(
         self,

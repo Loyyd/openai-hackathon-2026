@@ -3,6 +3,9 @@ from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from typing import Literal
+from urllib.parse import urlsplit
 
 from backend.app.schemas import Camera, CameraObservation, Detection, Incident, MapData, TransportObservation
 from backend.app.services.api import SentinelXService
@@ -57,11 +60,6 @@ def incident(incident_id: str, request: Request):
     return _service(request).get("incidents", incident_id, "Incident")
 
 
-@router.get("/api/transport", response_model=list[TransportObservation])
-def transport(request: Request):
-    return _service(request).list("transport")
-
-
 @router.get("/api/map", response_model=MapData)
 def map_data(request: Request):
     return _service(request).map_data()
@@ -94,9 +92,9 @@ async def upload_camera_snapshot(
     snapshot_id = uuid4().hex
     image_url = request.url_for("get_snapshot", snapshot_id=snapshot_id).path
     try:
-        return _service(request).upload_snapshot(
-            camera_id, captured_at, contents, image_url
-        )
+        observation = _service(request).upload_snapshot(camera_id, captured_at, contents, image_url)
+        request.app.state.pipeline.queue(observation["id"])
+        return observation
     except ValueError as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
 
@@ -122,6 +120,50 @@ def save_incident(item: Incident, request: Request):
     return _service(request).save("incidents", item)
 
 
-@router.post("/api/transport", response_model=TransportObservation, status_code=201)
-def save_transport(item: TransportObservation, request: Request):
-    return _service(request).save("transport", item)
+
+
+@router.get("/api/processing")
+def processing(request: Request):
+    return request.app.state.pipeline.status()
+
+
+@router.post("/api/cameras/capture", status_code=202)
+def capture_all(request: Request):
+    return request.app.state.pipeline.capture()
+
+
+@router.get("/api/observations/{observation_id}/analysis")
+def analysis(observation_id: str, request: Request):
+    _service(request).get("observations", observation_id, "Observation")
+    return request.app.state.repository.get_record("analysis", observation_id) or {"observation_id": observation_id, "status": "queued"}
+
+
+@router.post("/api/observations/{observation_id}/analyze", status_code=202)
+def analyze(observation_id: str, request: Request):
+    observation = _service(request).get("observations", observation_id, "Observation")
+    if not urlsplit(observation["image_url"]).path.startswith("/api/snapshots/"):
+        raise HTTPException(status_code=409, detail="Upload or ingest the image into snapshot storage first")
+    return request.app.state.pipeline.queue(observation_id)
+
+
+@router.get("/api/vehicles")
+def vehicles(request: Request):
+    return [{key: value for key, value in item.items() if key not in {"embedding", "colors", "color_counts"}}
+            for item in request.app.state.repository.records("vehicle")]
+
+
+@router.get("/api/vehicles/{vehicle_id}/sightings")
+def sightings(vehicle_id: str, request: Request):
+    if not request.app.state.repository.get_record("vehicle", vehicle_id):
+        raise HTTPException(status_code=404, detail="Vehicle not found")
+    return [item for item in _service(request).list("detections") if item.get("metadata", {}).get("vehicle_id") == vehicle_id]
+
+
+class IncidentStatusPatch(BaseModel):
+    status: Literal["active", "resolved"]
+
+
+@router.patch("/api/incidents/{incident_id}", response_model=Incident)
+def update_incident(incident_id: str, patch: IncidentStatusPatch, request: Request):
+    previous = _service(request).get("incidents", incident_id, "Incident")
+    return _service(request).save("incidents", Incident.model_validate({**previous, "status": patch.status}))

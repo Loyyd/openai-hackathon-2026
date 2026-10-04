@@ -64,6 +64,22 @@ class VehicleDetector:
                                                    confidence=raw.confidence))
         return detections
 
+    def detect_snapshot(self, frame: np.ndarray) -> list[VehicleDetection]:
+        """Independent still images have no ByteTrack continuity."""
+        height, width = frame.shape[:2]
+        size = min(width, self.config.detection_width)
+        kwargs = dict(classes=[2, 3, 5, 7], conf=self.config.confidence, imgsz=max(32, size), verbose=False)
+        try:
+            result = self.model.predict(frame, device=self.device, **kwargs)[0]
+        except (RuntimeError, NotImplementedError):
+            if self.device == "cpu":
+                raise
+            self.device = "cpu"
+            result = self.model.predict(frame, device="cpu", **kwargs)[0]
+        return [VehicleDetection(bbox=original_bbox(box.xyxy[0].cpu().tolist(), (width, height), (width, height)),
+                                 class_name=result.names[int(box.cls.item())], confidence=float(box.conf.item()))
+                for box in result.boxes]
+
     @staticmethod
     def _iou(a, b) -> float:
         intersection = max(0, min(a[2], b[2]) - max(a[0], b[0])) * max(0, min(a[3], b[3]) - max(a[1], b[1]))

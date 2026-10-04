@@ -4,11 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { divIcon, type LatLngTuple } from 'leaflet';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import type { MapProps } from './MapPanel';
-import { dateTime } from '../lib/presentation';
 import type { Location, Selection } from '../types';
 
-type Props = MapProps & { layers: { cameras: boolean; incidents: boolean; transport: boolean }; fit: number };
-type Place = { location: Location; entries: { key: string; title: string; kind: 'camera' | 'incident' | 'transport'; selection: Selection; detail?: string; severity?: string }[] };
+type Props = MapProps & { layers: { cameras: boolean; incidents: boolean }; fit: number };
+type Place = { location: Location; entries: { key: string; title: string; kind: 'camera' | 'incident'; selection: Selection; detail?: string; severity?: string }[] };
 const tileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const attribution = process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const position = (location: Location): LatLngTuple => [location.latitude, location.longitude];
@@ -36,7 +35,7 @@ function MapPosition({ selected, fit, coverage }: { selected?: Location; fit: nu
   return null;
 }
 
-export default function CityMap({ cameras, incidents, transport, selection, onSelect, layers, fit }: Props) {
+export default function CityMap({ cameras, incidents, selection, onSelect, layers, fit }: Props) {
   const [tilesFailed, setTilesFailed] = useState(false);
   const places = useMemo(() => {
     const groups = new Map<string, Place>();
@@ -49,15 +48,14 @@ export default function CityMap({ cameras, incidents, transport, selection, onSe
     };
     if (layers.incidents) incidents.forEach((item) => add(item.location, { key: item.id, title: item.title, kind: 'incident', severity: item.severity, selection: { kind: 'incident', id: item.id } }));
     if (layers.cameras) cameras.forEach((item) => add(item.location, { key: item.id, title: item.name, kind: 'camera', selection: { kind: 'camera', id: item.id } }));
-    if (layers.transport) transport.forEach((item) => add(item.location, { key: item.id, title: item.type + ' · Route ' + item.route, kind: 'transport', selection: null, detail: item.provider + ' · ' + dateTime(item.timestamp) + (item.delay_seconds != null ? ' · Delay ' + Math.round(item.delay_seconds / 60) + ' min' : '') }));
     return [...groups.entries()];
-  }, [cameras, incidents, transport, layers]);
+  }, [cameras, incidents, layers]);
   const selected = selection?.kind === 'camera' ? cameras.find((item) => item.id === selection.id)?.location : incidents.find((item) => item.id === selection?.id)?.location;
   return <div className="map-wrap">
     {tilesFailed && <div className="tile-warning" role="status">Map tiles unavailable. Markers, lists and details remain available.</div>}
     <MapContainer center={[53.374, -6.285]} zoom={11} scrollWheelZoom={false} className="city-map">
       <TileLayer url={tileUrl} attribution={attribution} eventHandlers={{ tileerror: () => setTilesFailed(true), loading: () => setTilesFailed(false) }} />
-      <MapPosition selected={selected} fit={fit} coverage={[...cameras, ...incidents, ...transport].map((item) => item.location)} />
+      <MapPosition selected={selected} fit={fit} coverage={[...cameras, ...incidents].map((item) => item.location)} />
       {places.map(([key, place]) => {
         const active = Boolean(selection && place.entries.some((item) => item.selection?.id === selection.id && item.selection?.kind === selection.kind));
         const kind = place.entries[0].severity || place.entries[0].kind;
