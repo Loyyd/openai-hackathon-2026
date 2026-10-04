@@ -30,7 +30,7 @@ export default function Home() {
 
   return <main className="shell">
     <header className="topbar"><a className="brand" href="#overview" aria-label="SentinelX home"><span className="brand-mark">S<span>×</span></span><span>sentinel<span className="brand-x">x</span></span></a>
-      <nav className="main-nav" aria-label="Main navigation"><a className="nav-active" href="#overview">Overview</a><a href="#incidents">Incidents <span className="nav-count">{incidents.length}</span></a><a href="#cameras">Cameras</a></nav>
+      <nav className="main-nav" aria-label="Main navigation"><a className="nav-active" href="#overview">Overview</a><a href="#incidents">Incidents <span className="nav-count">{incidents.length}</span></a><a href="#cameras">Cameras</a><a href="/ai">AI demo</a></nav>
       <div className="header-right"><span className="system-status"><i /> {state?.source === 'api' ? 'BACKEND CONNECTED' : 'DEMO MODE'}</span><span className="header-divider" /><span className="header-city">DUBLIN, IE <span>⌄</span></span><span className="avatar">SX</span></div>
     </header>
     <div className="page-content" id="overview">

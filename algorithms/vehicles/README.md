@@ -31,6 +31,27 @@ First execution downloads YOLO11n (~5 MB), torchvision ResNet18 ImageNet weights
 
 ## Outputs
 
+### Website demo
+
+Generate `output/highway`, then prepare a browser-compatible H.264 replay:
+
+```sh
+ffmpeg -y -i output/highway/annotated.mp4 -c:v libx264 -pix_fmt yuv420p -movflags +faststart output/highway/browser.mp4
+```
+
+Start the backend with `AI_DEMO_DIR=output/highway` (the default) and open `/ai` in the website. The page shows playback, vehicle fingerprints and actual model/device status; refresh results after rerunning the pipeline. Assets remain local and ignored by Git. This unauthenticated demo serves footage to website viewers: keep it local/private. The API omits raw plate text from vehicle summaries even if the CLI stored it.
+
+### macOS certificates and acceleration
+
+For python.org Python 3.14 certificate failures, run `/Applications/Python 3.14/Install Certificates.command` on your Mac. Test HTTPS and Metal with the **same activated virtualenv Python** used for the pipeline:
+
+```sh
+python -c "import urllib.request; print(urllib.request.urlopen('https://download.pytorch.org').status)"
+python -c "import torch; print('MPS available:', torch.backends.mps.is_available())"
+```
+
+Do not disable TLS verification. If a download is corrupt, remove only the affected checkpoint from its documented cache and retry. `--device auto` already selects MPS when available for YOLO and ResNet; `--device mps` explicitly requests it. EasyOCR currently runs on CPU, so its CPU warning does not imply the detector/embedding model is on CPU. Check `run.json` and the website status. CPU fallback is logged for unsupported device operations.
+
 `annotated.mp4` (when requested), `latest.jpg`, `vehicles.json`, `observations.jsonl`, `embeddings.npz`, `run.json`, and `crops/VX-XXXX/best.jpg`. MP4 contains sampled frames at the configured sample FPS with no audio. `run.json` records actual device/embedding backend. Embeddings are separate from human-readable JSON. Outputs are run-local snapshots, not a reloadable identity database; use a new output directory per run.
 
 Raw plate text is excluded from JSON and overlays by default. Enable only when appropriate using `STORE_RAW_PLATES=true` or `--store-raw-plates`. **Images, crops and video can still contain readable plates or people**: disabling text persistence does not redact pixels. Keep artifacts private; do not commit outputs or share unredacted footage. There is no facial recognition, owner lookup or cloud inference.
