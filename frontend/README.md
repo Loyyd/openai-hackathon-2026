@@ -4,6 +4,8 @@ Dublin situational awareness dashboard: public map, incident inspection, camera 
 
 ## Run
 
+Start the backend in a separate terminal from the repository root with `./scripts/run_backend.sh --reload` (first-time Python setup is in the [root README](../README.md#start-locally)). Then start the frontend:
+
     cd frontend
     npm ci
     npm run dev
