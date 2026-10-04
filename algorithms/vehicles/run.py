@@ -122,6 +122,7 @@ def main() -> None:
         (args.output / "run.json").write_text(json.dumps({"source": str(args.video), "width": width, "height": height,
             "source_fps": source_fps, "sample_fps": sampled_fps, "frames": frames,
             "embedding_backend": processor.encoder.backend, "device": processor.detector.device,
+            "ocr_status": "disabled" if not processor.plate_recognizer else "unavailable" if processor.plate_recognizer._initialization_failed else "attempted (readability not guaranteed)",
             "raw_plates_stored": args.store_raw_plates}, indent=2))
     print(f"Processed {frames} sampled frames; output: {args.output}")
 
