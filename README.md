@@ -28,6 +28,7 @@ Open http://localhost:3000; API docs: http://localhost:8000/docs. Python reads p
 
 - Open / for the interactive map, incident filters, camera evidence and operator controls. Use the explicit demo switch to try simulated workflows; credentials and configuration are in the [frontend README](frontend/README.md).
 - Open /ai using the “AI demo” navigation link to inspect processed highway footage and vehicle fingerprints. Follow the [vehicle pipeline setup](algorithms/vehicles/README.md) to prepare artifacts and the browser replay, then set AI_DEMO_DIR on the backend.
+- During the AI replay, the right-hand panel reveals each unique fingerprint on its first detected frame, highlights identities currently in frame, and keeps observed identities available for inspection. Seeking rebuilds the list and matching evidence up to that frame. Keep `observations.jsonl` beside the replay to enable this timing; older artifacts without it show full results with an explicit timing-unavailable label.
 - Real operator sessions and incident workflow persistence require the proposed [backend endpoints](frontend/docs/backend-handoff.md). The [recent PR comparison](frontend/docs/pr-integration.md) explains how the frontend integrates PRs #2 and #3.
 
 ## Demo pipeline

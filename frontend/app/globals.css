@@ -205,6 +205,29 @@ footer { display: flex; align-items: center; justify-content: space-between; fle
 .compact-dialog .notice { display: block; }
 .compact-dialog .notice p { margin-top: 7px; }
 .login-form { display: flex; flex-direction: column; gap: 16px; margin-top: 22px; }
+.ai-replay-grid { grid-template-columns: minmax(0, 1.8fr) minmax(320px, 1fr); align-items: start; }
+.ai-video-panel { padding: 16px; }
+.ai-video-panel video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #15241f; border-radius: 8px; }
+.ai-playback-status { display: flex; align-items: center; flex-wrap: wrap; gap: 9px; margin-top: 16px; font-size: 12px; }
+.ai-playback-status > span:last-child { margin-left: auto; color: var(--muted); }
+.ai-status-dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa99f; }
+.ai-status-dot.is-playing { background: var(--green); box-shadow: 0 0 0 4px var(--mint); }
+.ai-identities-panel { padding: 20px; }
+.ai-identity-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ai-identity-heading h2 { margin: 4px 0 0; font-size: 21px; }
+.ai-count { padding: 5px 9px; border-radius: 20px; background: var(--mint); color: var(--green); font-size: 12px; white-space: nowrap; }
+.ai-muted { color: var(--muted); font-size: 12px; }
+.ai-identity-list { display: grid; gap: 9px; max-height: 360px; overflow-y: auto; padding: 3px; }
+.ai-identity-card { display: grid; gap: 5px; width: 100%; padding: 13px; text-align: left; color: var(--ink); border: 1px solid var(--line); background: #fff; }
+.ai-identity-card.is-active { background: #f3faf5; border-left: 3px solid var(--green); }
+.ai-identity-card[aria-pressed="true"] { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.ai-identity-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ai-identity-state { color: var(--muted); font-size: 10px; }
+.is-active .ai-identity-state { color: var(--green); font-weight: 600; }
+.ai-empty { padding: 24px 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); }
+.ai-vehicle-details { border-top: 1px solid var(--line); padding-top: 18px; margin-top: 18px; font-size: 12px; }
+.ai-vehicle-details pre { overflow: auto; }
+.ai-vehicle-details summary { cursor: pointer; color: var(--green); }
 @media (min-width: 1600px) { .page-content { padding-left: 45px; padding-right: 45px; } }
 @media (max-width: 1120px) {
   .topbar { gap: 28px; }.main-nav { gap: 20px; }.header-city { display: none; }

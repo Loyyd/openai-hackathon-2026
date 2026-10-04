@@ -55,7 +55,7 @@ Set these before building. Tiles use ordinary browser caching, visible attributi
     npm run build
     npm run test:e2e
 
-Browser tests use installed Google Chrome (channel: chrome). On machines without Chrome, install it with npx playwright install chrome. The suite starts the production build on 127.0.0.1:3100 and intercepts API and tile requests; tests do not fetch OSM tiles or require a backend. Ensure the build is current before rerunning.
+Browser tests use installed Google Chrome (channel: chrome). On machines without Chrome, install it with npx playwright install chrome. In unprivileged sandboxes, use `npx playwright install chromium` and `PLAYWRIGHT_CHANNEL=chromium npm run test:e2e`; managed setup installs this user-local browser. The suite starts the production build on 127.0.0.1:3100 and intercepts API and tile requests; tests do not fetch OSM tiles or require a backend. Ensure the build is current before rerunning.
 
 Coverage includes complete collections and filters, co-location and map layers, evidence ordering, session lifecycle, workflows and failed writes, reads racing completed saves, polling/visibility/timeouts, outages and recovery, isolated demo persistence, empty/missing data, broken images/video, and mobile/keyboard focus. AI page regressions cover navigation, vehicle selection, refresh, media URLs and unavailable artifacts. Screenshots go to ../output/playwright; failure traces and reports are ignored by git.
 
