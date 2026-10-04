@@ -273,7 +273,7 @@ test('polling pauses when hidden, resumes on return, prevents overlap and times 
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
   expect(state.mapReads).toBe(initialReads + 2);
   await page.clock.fastForward(10_100);
-  await expect(page.getByText('The request timed out after 10 seconds.', { exact: true })).toBeVisible();
+  await expect(page.getByText('The request timed out. Please retry.', { exact: true })).toBeVisible();
   await expect(page.getByTestId('active-count')).toHaveText('5');
   release({ cameras: [], incidents: [], transport: [] });
   await expect(page.getByTestId('active-count')).toHaveText('5');
