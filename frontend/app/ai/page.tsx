@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { ApiError, request } from '../../lib/api';
 import { TopBar, navIcons } from '../../components/TopBar';
 
@@ -71,7 +70,7 @@ export default function AIDemo() {
   const selected = discovered.find(vehicle => vehicle.vehicle_id === selectedId) ?? discovered.find(vehicle => activeIds.has(vehicle.vehicle_id)) ?? discovered[0];
 
   return <main className="shell">
-    <TopBar active="ai" items={[{ key: 'overview', label: 'Map', icon: navIcons.map, href: '/' }, { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '/#cameras' }, { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' }]}><Link className="header-link" href="/transport">Ireland transport</Link></TopBar>
+    <TopBar active="ai" items={[{ key: 'overview', label: 'Map', icon: navIcons.map, href: '/' }, { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '/#incidents' }, { key: 'cameras', label: 'Cameras', icon: navIcons.camera, href: '/cameras' }, { key: 'ai', label: 'Tracking demo', icon: navIcons.ai, href: '/ai' }]} />
     <div className="case-band"><div><span className="eyebrow">LOCAL VIDEO INTELLIGENCE</span><h1>Highway vehicle demo</h1><p className="case-subtitle">Recorded highway footage · not a live Dublin feed · pseudonymous identities</p></div><div className="case-meta"><span className="case-id">AI-DEMO · RECORDED</span><span className={'status-pill' + (playing ? '' : ' is-idle')}><i />{playing ? 'PLAYING' : 'REPLAY'}</span><button className="refresh-button" disabled={loading} onClick={() => void load()}>{loading ? 'Loading results…' : 'Refresh results'}</button></div></div>
     <div className="page-content">
       <p className="demo-notice">Local demo only. Footage may contain readable plates. Scores are heuristic, not verified identities; no owner lookup or cross-camera claim.</p>

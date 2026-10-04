@@ -1,8 +1,11 @@
 """Repository implementations; routes depend only on the storage protocol."""
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from typing import Any, Protocol
+from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, func
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
@@ -29,12 +32,18 @@ class Repository(Protocol):
     def upsert(self, kind: str, item: Model) -> dict[str, Any]: ...
     def save_snapshot(self, observation: CameraObservation, snapshot: dict[str, Any]) -> None: ...
     def get_snapshot(self, snapshot_id: str) -> dict[str, Any] | None: ...
+    def get_record(self, kind: str, item_id: str) -> dict | None: ...
+    def records(self, kind: str, camera_id: str | None = None) -> list[dict]: ...
+    def count_records(self, kind: str) -> int: ...
+    def put_record(self, kind: str, item_id: str, payload: dict) -> None: ...
+    def complete_analysis(self, detections: list[Detection], incidents: list[Incident], records: list[tuple[str, str, dict]]) -> None: ...
 
 
 class MemoryRepository:
     def __init__(self, seed: bool = True) -> None:
         self._items: dict[str, dict[str, dict[str, Any]]] = {}
         self._snapshots: dict[str, dict[str, Any]] = {}
+        self._records: dict[tuple[str, str], dict] = {}
         if seed:
             for kind, records in (("cameras", CAMERAS), ("observations", OBSERVATIONS), ("incidents", INCIDENTS), ("transport", TRANSPORT)):
                 for record in records:
@@ -63,15 +72,37 @@ class MemoryRepository:
         return self._snapshots.get(snapshot_id)
 
 
+    def get_record(self, kind, item_id):
+        return self._records.get((kind, item_id))
+
+    def records(self, kind, camera_id=None):
+        return [value for (key, _), value in self._records.items() if key == kind and (camera_id is None or value.get("camera_id") == camera_id)]
+
+    def count_records(self, kind):
+        return len(self.records(kind))
+
+    def put_record(self, kind, item_id, payload):
+        self._records[(kind, item_id)] = payload
+
+    def complete_analysis(self, detections, incidents, records):
+        for item in detections:
+            self.upsert("detections", item)
+        for item in incidents:
+            self.upsert("incidents", item)
+        for kind, item_id, payload in records:
+            self.put_record(kind, item_id, payload)
+
+
 class SQLAlchemyRepository:
-    def __init__(self, database_url: str) -> None:
+    def __init__(self, database_url: str, seed: bool = True) -> None:
         options: dict[str, Any] = {"pool_pre_ping": True}
         if database_url in ("sqlite://", "sqlite:///:memory:"):
             options.update(connect_args={"check_same_thread": False}, poolclass=StaticPool)
         self.engine = create_engine(database_url, **options)
         Base.metadata.create_all(self.engine)
         self._migrate_legacy()
-        self._seed()
+        if seed:
+            self._seed()
 
     def _migrate_legacy(self) -> None:
         """Copy pre-PR7 JSON rows once, without overwriting newer typed records."""
@@ -184,6 +215,44 @@ class SQLAlchemyRepository:
                 "size_bytes": row.size_bytes,
                 "uploaded_at": self._as_iso_utc(row.uploaded_at),
             }
+
+    def get_record(self, kind, item_id):
+        with Session(self.engine) as session:
+            row = session.get(JSONRecord, (kind, item_id))
+            return row.payload if row else None
+
+    def records(self, kind, camera_id=None):
+        with Session(self.engine) as session:
+            query = select(JSONRecord).where(JSONRecord.kind == kind)
+            if camera_id is not None:
+                query = query.where(JSONRecord.payload["camera_id"].as_string() == camera_id)
+            return [row.payload for row in session.scalars(query).all()]
+
+    def count_records(self, kind):
+        with Session(self.engine) as session:
+            return session.scalar(select(func.count()).select_from(JSONRecord).where(JSONRecord.kind == kind))
+
+    @staticmethod
+    def _put_record(session, kind, item_id, payload):
+        row = session.get(JSONRecord, (kind, item_id))
+        if row is None:
+            session.add(JSONRecord(kind=kind, id=item_id, payload=payload))
+        else:
+            row.payload = payload
+
+    def put_record(self, kind, item_id, payload):
+        with Session(self.engine) as session, session.begin():
+            self._put_record(session, kind, item_id, payload)
+
+    def complete_analysis(self, detections, incidents, records):
+        # Results, fingerprints and the completion marker commit together.
+        with Session(self.engine) as session, session.begin():
+            for item in detections:
+                self._upsert_typed(session, "detections", item.model_dump(mode="json"))
+            for item in incidents:
+                self._upsert_typed(session, "incidents", item.model_dump(mode="json"))
+            for kind, item_id, payload in records:
+                self._put_record(session, kind, item_id, payload)
 
     @staticmethod
     def _model_for(kind: str):
@@ -317,5 +386,8 @@ class SQLAlchemyRepository:
 
 
 def make_repository(database_url: str | None = None) -> Repository:
-    """Unset DATABASE_URL selects isolated in-memory demo storage."""
-    return SQLAlchemyRepository(database_url) if database_url else MemoryRepository()
+    """Use persistent storage without inserting fixture data into the application."""
+    if not database_url:
+        Path("output").mkdir(exist_ok=True)
+        database_url = "sqlite:///./output/cameras.db"
+    return SQLAlchemyRepository(database_url, seed=False)

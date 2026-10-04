@@ -21,11 +21,13 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://sentinelx:sentinelx@db:5432/sentinelx
       SNAPSHOT_STORAGE_DIR: /app/backend/uploads
-      TRANSPORT_CACHE_DIR: /app/output/transport-cache
-      NTA_API_KEY: ${NTA_API_KEY:-}
+      CAMERA_POLL_SECONDS: "60"
+      VEHICLE_DEVICE: cpu
+      VEHICLE_WEIGHTS: /app/model-weights/yolo11m.pt
     volumes:
       - snapshot_data:/app/backend/uploads
-      - transport_cache:/app/output/transport-cache
+      - model_cache:/root/.cache
+      - model_weights:/app/model-weights
     ports:
       - "8000:8000"
     healthcheck:
@@ -57,4 +59,5 @@ services:
 volumes:
   postgres_data:
   snapshot_data:
-  transport_cache:
+  model_cache:
+  model_weights:

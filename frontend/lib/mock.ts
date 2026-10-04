@@ -47,13 +47,7 @@ export const demoMapData: MapData = {
       first_seen: '2026-10-04T10:18:00Z', last_seen: '2026-10-04T10:34:00Z', status: 'active', metadata: { source: 'DEMO DATA' },
     },
   ],
-  transport: [
-    {
-      id: 'demo-bus-41', provider: 'DEMO', type: 'bus', route: '41', vehicle_id: 'DEMO-41',
-      location: { id: 'dublin-airport', name: 'Dublin Airport', latitude: 53.4264, longitude: -6.2499 },
-      timestamp: '2026-10-04T10:40:00Z', speed: 18.4, delay_seconds: 240, metadata: { source: 'DEMO DATA' },
-    },
-  ],
+
 };
 
 demoMapData.cameras.push(

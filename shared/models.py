@@ -73,4 +73,3 @@ class TransportObservation(Contract):
 class MapData(Contract):
     cameras: list[Camera]
     incidents: list[Incident]
-    transport: list[TransportObservation]

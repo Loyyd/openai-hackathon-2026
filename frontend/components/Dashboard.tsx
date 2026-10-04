@@ -1,111 +1,76 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import { createClient } from '../lib/api';
-import { useDashboard, useSession } from '../hooks/useDashboard';
-import { resolved, sortIncidents } from '../lib/presentation';
-import type { DataSource, Selection } from '../types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createClient, errorMessage, request } from '../lib/api';
+import { sortIncidents } from '../lib/presentation';
+import type { MapData, Selection } from '../types';
 import { MapPanel } from './MapPanel';
 import { IncidentList, defaultFilters, type IncidentFilters } from './IncidentList';
 import { CameraGallery } from './CameraGallery';
 import { DetailDialog } from './DetailDialog';
 import { CameraDetails } from './CameraDetails';
 import { IncidentDetails } from './IncidentDetails';
-import { LoginDialog } from './LoginDialog';
-import { ConnectionStatus } from './ConnectionStatus';
 import { TopBar, navIcons } from './TopBar';
 
-export function Dashboard() {
-  const [source, setSource] = useState<DataSource>(process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' ? 'demo' : 'api');
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('sentinelx.source');
-      if (saved === 'demo' || saved === 'api') setSource(saved);
-    } catch { /* Browsing is still available without session storage. */ }
-    setReady(true);
-  }, []);
-  const changeSource = (value: DataSource) => {
-    try { sessionStorage.setItem('sentinelx.source', value); } catch { /* Selection lasts for this page. */ }
-    setSource(value);
-  };
-  if (!ready) return <main className="initial-loading" role="status">Loading SentinelX…</main>;
-  return <DashboardContent key={source} source={source} onSource={changeSource} />;
-}
-
-function DashboardContent({ source, onSource }: { source: DataSource; onSource: (source: DataSource) => void }) {
-  const client = useMemo(() => createClient(source), [source]);
-  const dashboard = useDashboard(client);
-  const session = useSession(client);
+type Processing = { running: boolean; capturing: boolean; stored_snapshots: number; completed: number; pending: number; failed: number; vehicles: number; error: string | null };
+export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras' }) {
+  const client = useMemo(() => createClient(), []);
+  const [data, setData] = useState<MapData | null>(null);
+  const [processing, setProcessing] = useState<Processing | null>(null);
+  const [error, setError] = useState('');
   const [selection, setSelection] = useState<Selection>(null);
-  const [returnIncident, setReturnIncident] = useState<string | null>(null);
-  const [login, setLogin] = useState(false);
   const [filters, setFilters] = useState<IncidentFilters>(defaultFilters);
   const [expandedIncidents, setExpandedIncidents] = useState(false);
-  const [expandedCameras, setExpandedCameras] = useState(false);
-  const [section, setSection] = useState('overview');
-  const { data, workflows, workflowStatus } = dashboard;
+  const [refreshKey, setRefreshKey] = useState<string | null>(null);
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const [map, state] = await Promise.all([client.map(signal), request<Processing>('/api/processing', { signal })]);
+      if (signal?.aborted) return;
+      setData(map); setProcessing(state); setError(''); setRefreshKey(new Date().toISOString());
+    } catch (cause) { if (!signal?.aborted) setError(errorMessage(cause)); }
+  }, [client]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const run = () => { if (!document.hidden) void refresh(controller.signal); };
+    run(); const timer = setInterval(run, 5000);
+    document.addEventListener('visibilitychange', run);
+    return () => { controller.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', run); };
+  }, [refresh]);
   const cameras = data?.cameras ?? [];
   const incidents = data?.incidents ?? [];
-  const active = incidents.filter((item) => !resolved(item, workflows[item.id]));
-  const matching = incidents.filter((incident) => {
-    const workflow = workflows[incident.id];
-    const isResolved = resolved(incident, workflow);
-    if (filters.status !== 'all' && (filters.status === 'resolved') !== isResolved) return false;
-    if (filters.severity !== 'all' && incident.severity !== filters.severity) return false;
-    if (filters.type !== 'all' && incident.type !== filters.type) return false;
-    if (!(incident.title + ' ' + incident.description + ' ' + incident.location.name + ' ' + incident.type).toLowerCase().includes(filters.query.trim().toLowerCase())) return false;
-    if (filters.assignee === 'unassigned' && (workflowStatus !== 'ready' || workflow?.assignee)) return false;
-    if (filters.assignee === 'me' && (!session.user || workflow?.assignee?.id !== session.user.id)) return false;
-    if (!['all', 'unassigned', 'me'].includes(filters.assignee) && workflow?.assignee?.id !== filters.assignee) return false;
-    return true;
-  }).sort(sortIncidents);
-  const operators = [...new Map([...session.users, ...Object.values(workflows).flatMap((workflow) => workflow.assignee ? [workflow.assignee] : [])].map((user) => [user.id, user])).values()];
-  const selectedIncident = selection?.kind === 'incident' ? incidents.find((item) => item.id === selection.id) : undefined;
-  const selectedCamera = selection?.kind === 'camera' ? cameras.find((item) => item.id === selection.id) : undefined;
-  const select = (next: Selection) => { setReturnIncident(null); setSelection(next); };
-  const navigate = (next: string) => {
-    setSection(next);
-    if (next === 'incidents') setExpandedIncidents(true);
-    if (next === 'cameras') setExpandedCameras(true);
-  };
+  const matching = incidents.filter((item) =>
+    (filters.status === 'all' || item.status === filters.status) &&
+    (filters.severity === 'all' || item.severity === filters.severity) &&
+    (filters.type === 'all' || item.type === filters.type) &&
+    (item.title + ' ' + item.description + ' ' + item.location.name).toLowerCase().includes(filters.query.toLowerCase())
+  ).sort(sortIncidents);
+  const camera = selection?.kind === 'camera' ? cameras.find((item) => item.id === selection.id) : undefined;
+  const incident = selection?.kind === 'incident' ? incidents.find((item) => item.id === selection.id) : undefined;
+  async function capture() {
+    try { await request('/api/cameras/capture', { method: 'POST' }); await refresh(); }
+    catch (cause) { setError(errorMessage(cause)); }
+  }
   return <main className="shell">
-    <a className="skip-link" href="#overview">Skip to dashboard</a>
-    <TopBar active={section} items={[
-      { key: 'overview', label: 'Map', icon: navIcons.map, href: '#overview', onClick: () => navigate('overview') },
-      { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '#cameras', onClick: () => navigate('cameras') },
-      { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' },
-    ]}>
-      <Link className="header-link" href="/transport">Ireland transport</Link>
-      {session.user ? <><span className="operator-chip"><span className="operator-avatar" aria-hidden="true">{session.user.display_name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><span className="operator-name">{session.user.display_name}{source === 'demo' && <small>Demo operator</small>}</span></span><button className="secondary-button" disabled={session.busy} onClick={() => void session.logout().catch(() => undefined)}>Sign out</button></> : <button className="secondary-button" onClick={() => setLogin(true)}>Operator sign in</button>}
-    </TopBar>
-    <div className="case-band">
-      <div><div className="eyebrow">ACTIVE OVERVIEW</div><h1>Dublin situational awareness</h1></div>
-      <div className="case-meta"><span className="case-id">{source === 'demo' ? 'SYNTHETIC DEMO DATA' : 'BACKEND DATA'}</span><span className={'status-pill' + (dashboard.error ? ' is-offline' : '')}><i />{dashboard.error ? 'OFFLINE' : source === 'demo' ? 'DEMO' : 'LIVE'}</span><button className="refresh-button" onClick={() => void dashboard.refresh()} disabled={dashboard.refreshing}><span className={dashboard.refreshing ? 'refreshing' : ''} aria-hidden="true">↻</span>{dashboard.refreshing ? 'Refreshing…' : 'Refresh data'}</button></div>
+    <TopBar active={view} items={[
+      { key: 'overview', label: 'Map', icon: navIcons.map, href: '/#overview' },
+      { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '/#incidents' },
+      { key: 'cameras', label: 'Cameras', icon: navIcons.camera, href: '/cameras' },
+      { key: 'ai', label: 'Tracking demo', icon: navIcons.ai, href: '/ai' },
+    ]} />
+    <div className="case-band"><div><div className="eyebrow">CAMERAS &amp; INCIDENTS</div><h1>{view === 'cameras' ? 'Camera gallery' : 'Camera monitoring'}</h1></div>
+      <button className="secondary-button" disabled={!processing?.running || processing.capturing} onClick={() => void capture()}>{processing?.capturing ? 'Collecting snapshots…' : 'Collect snapshots'}</button>
     </div>
     <div className="page-content" id="overview">
-      <ConnectionStatus source={source} data={data} error={dashboard.error} workflowStatus={workflowStatus} workflowError={dashboard.workflowError} lastSuccess={dashboard.lastSuccess} refreshing={dashboard.refreshing} onRetry={() => void dashboard.refresh()} onSource={onSource} />
-      {session.error && <p className="session-notice" role="status">{session.error}</p>}
-      <section className="stats-grid" aria-label="City status">
-        <article className="stat-card"><span className="stat-icon icon-incidents" aria-hidden="true">⌁</span><div className="stat-label">Active incidents</div><div className="stat-value" data-testid="active-count">{data ? active.length : '—'}</div><div className="stat-foot">{data ? active.filter((item) => ['high', 'critical'].includes(item.severity)).length + ' high priority' : 'Waiting for data'}<span>Across Greater Dublin</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-cameras" aria-hidden="true">⌖</span><div className="stat-label">Camera locations</div><div className="stat-value">{data ? cameras.length : '—'}</div><div className="stat-foot">Snapshot monitoring<span>Provider images</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-transport" aria-hidden="true">⇄</span><div className="stat-label">Transport signals</div><div className="stat-value">{data ? data.transport.length : '—'}</div><div className="stat-foot">Bus &amp; road network<span>Observations</span></div></article>
-        <article className="stat-card"><span className="stat-icon icon-confidence" aria-hidden="true">◉</span><div className="stat-label">Average confidence</div><div className="stat-value">{active.length ? Math.round(active.reduce((sum, item) => sum + item.confidence, 0) / active.length * 100) + '%' : '—'}</div><div className="stat-foot">Active incidents<span>Supplied analysis</span></div></article>
-      </section>
-      {data ? <>
-        <div className="content-grid">
-          <MapPanel cameras={cameras} incidents={matching} transport={data.transport} selection={selection} onSelect={select} />
-          <IncidentList incidents={matching} total={incidents.length} types={[...new Set(incidents.map((item) => item.type))].sort()} filters={filters} onFilters={(next) => { setFilters(next); setExpandedIncidents(true); }} expanded={expandedIncidents} onExpand={() => setExpandedIncidents(!expandedIncidents)} onSelect={(id) => select({ kind: 'incident', id })} selectedId={selection?.kind === 'incident' ? selection.id : undefined} workflows={workflows} workflowStatus={workflowStatus} operators={operators} user={session.user} />
-        </div>
-        <CameraGallery cameras={cameras} expanded={expandedCameras} onExpand={() => setExpandedCameras(!expandedCameras)} onSelect={(id) => select({ kind: 'camera', id })} />
-      </> : <div className="initial-state" role="status">{dashboard.error ? 'Retry the backend connection or choose demo data to explore SentinelX.' : 'Connecting to the city dataset…'}</div>}
-      <footer><span className="footer-brand">SENTINEL<span>X</span></span><span>Dublin situational awareness · {source === 'demo' ? 'Synthetic demo' : 'Backend data'}</span><span>Public viewing · Operator management</span></footer>
+      {error && <p role="alert">{error} <button onClick={() => void refresh()}>Retry</button></p>}
+      {processing && <div className="pipeline-summary" role="status"><span>{processing.stored_snapshots} stored snapshots</span><span>{processing.completed} scanned</span><span>{processing.pending} pending</span><span>{processing.vehicles} vehicle IDs</span>{processing.failed > 0 && <span>{processing.failed} failed scans</span>}{!processing.running && <span>Camera worker stopped</span>}{processing.error && <span>{processing.error}</span>}</div>}
+      {data ? view === 'cameras' ? <CameraGallery cameras={cameras} standalone expanded onExpand={() => undefined} onSelect={(id) => setSelection({ kind: 'camera', id })} /> : <div className="content-grid">
+        <MapPanel cameras={cameras} incidents={matching} selection={selection} onSelect={setSelection} />
+        <IncidentList incidents={matching} total={incidents.length} types={[...new Set(incidents.map((item) => item.type))]} filters={filters} onFilters={setFilters} expanded={expandedIncidents} onExpand={() => setExpandedIncidents(!expandedIncidents)} onSelect={(id) => setSelection({ kind: 'incident', id })} selectedId={incident?.id} />
+      </div> : <p role="status">Loading cameras…</p>}
     </div>
-    {selection && <DetailDialog key={selection.kind + selection.id} title={selectedIncident?.title ?? selectedCamera?.name ?? 'Record unavailable'} eyebrow={selection.kind === 'incident' ? 'INCIDENT DETAILS' : 'CAMERA DETAILS'} onClose={() => setSelection(null)}>
-      {selectedIncident ? <IncidentDetails incident={selectedIncident} workflow={workflows[selectedIncident.id]} workflowStatus={workflowStatus} cameras={cameras} client={client} session={session} source={source} refreshKey={dashboard.lastSuccess} onLogin={() => setLogin(true)} onCamera={(id, observationId) => { setReturnIncident(selectedIncident.id); setSelection({ kind: 'camera', id, observationId }); }} onSave={dashboard.saveWorkflow} /> :
-        selectedCamera ? <CameraDetails onRefresh={() => void dashboard.refresh()} camera={selectedCamera} observationId={selection.observationId} client={client} refreshKey={dashboard.lastSuccess} onBack={returnIncident ? () => setSelection({ kind: 'incident', id: returnIncident }) : undefined} /> : <p>This record is no longer in the current dataset.</p>}
+    {selection && <DetailDialog title={camera?.name ?? incident?.title ?? 'Details'} eyebrow={camera ? 'CAMERA' : 'INCIDENT'} onClose={() => setSelection(null)}>
+      {camera && <CameraDetails camera={camera} observationId={selection.observationId} client={client} refreshKey={refreshKey} onRefresh={() => void refresh()} />}
+      {incident && <IncidentDetails incident={incident} cameras={cameras} client={client} refreshKey={refreshKey} onRefresh={() => void refresh()} onCamera={(id, observationId) => setSelection({ kind: 'camera', id, observationId })} />}
     </DetailDialog>}
-    {login && <LoginDialog source={source} session={session} onClose={() => setLogin(false)} />}
   </main>;
 }

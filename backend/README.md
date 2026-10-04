@@ -1,32 +1,9 @@
-# SentinelX backend
+# Backend
 
-FastAPI API backed by seeded DEMO DATA. Requires Python 3.11+. Run from the repository root:
+Run `./scripts/run_backend.sh` from the repository root after installing `requirements.txt` and `algorithms/requirements-vision.txt`. The FastAPI lifespan starts one collection thread and one serialized inference worker. Use one server process. The default database is `sqlite:///./output/cameras.db` without fixture seeds; `DATABASE_URL` can select PostgreSQL. `SNAPSHOT_STORAGE_DIR` defaults to `backend/uploads`.
 
-```sh
-python3 --version  # Must be Python 3.11 or newer
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-./scripts/run_backend.sh --reload
-```
+Camera uploads store actual validated bytes and immediately enter automatic processing. The worker also discovers public TII cameras and stores changed images, using eight concurrent downloads and per-camera hashes. Model failures persist as failed analysis records; retry through the analysis endpoint. All model results, fingerprints and completion markers share one database transaction.
 
-For subsequent starts, run only `./scripts/run_backend.sh --reload`. The launcher uses `.venv/bin/python -m uvicorn` so an unrelated global Uvicorn installation cannot select the wrong Python. If a traceback mentions Xcode or Python 3.9, stop the old command with Ctrl+C and use this launcher.
+Use `CAMERA_WORKER_ENABLED=false` for isolated API/tests and `CAMERA_INGESTION_ENABLED=false` to scan uploads without automatic provider polling. Set `VEHICLE_WEIGHTS`, `VEHICLE_DEVICE`, `CAMERA_POLL_SECONDS`, and `CONGESTION_REVIEW_THRESHOLD` as needed. Model weights download on first use if absent.
 
-Open http://localhost:8000/docs for the interactive API and http://localhost:8000/health to check startup. Unset `DATABASE_URL` uses an in-memory repository. To use the local PostgreSQL service from Compose, start it with `docker compose up -d db`, then start the API with `DATABASE_URL=postgresql+psycopg://sentinelx:sentinelx@localhost:5433/sentinelx`. The API persists cameras, locations, observations, detections, and incidents in typed tables; transport remains in the generic JSON row for now. Set `DATABASE_URL=sqlite:///./sentinelx.db` for SQLite persistence during local development. The same repository protocol serves both memory and database storage.
-
-All request and response bodies use the canonical strict Pydantic contracts in `shared/models.py`, re-exported for backend API use from `backend/app/schemas/`. SQLAlchemy persistence models live in `backend/app/models/`. Routes call `backend/app/services/api.py`; services apply parent-resource checks and coordinate persistence and image metadata, while `backend/app/database/` implements storage. The API supports GET `/health`, `/api/cameras`, `/api/cameras/{camera_id}`, `/api/cameras/{camera_id}/observations`, `/api/detections`, `/api/observations/{observation_id}/detections`, `/api/incidents`, `/api/incidents/{incident_id}`, `/api/transport`, `/api/map`; POST `/api/cameras`, `/api/observations`, `/api/detections`, `/api/incidents`, `/api/transport`. POSTs validate the body, upsert by ID (repeating the same ID replaces its record), and return 201. Observations require an existing camera; detections require an existing observation. Missing resources/parents return 404.
-
-Camera and observation responses retain the existing shared JSON contracts; their locations are stored as normalized location rows and expanded when returned. Upload a JPEG, PNG, or WebP snapshot with a timezone-aware capture timestamp using `POST /api/cameras/{camera_id}/snapshots` as multipart form fields `file` and `captured_at`. Uploads are decoded and validated, limited to 10 MB and 20 megapixels. The API creates a linked observation, stores the image under `SNAPSHOT_STORAGE_DIR` (default `backend/uploads`), records file metadata in Postgres, and returns an observation whose `image_url` points to `GET /api/snapshots/{snapshot_id}`. Docker Compose keeps uploads in its `snapshot_data` volume. `create_all` creates tables for development; there are no migration scripts yet.
-
-Run tests from repository root: `.venv/bin/python -m pytest backend/tests`.
-
-
-## Integration after PRs #6 and #7
-
-- The transport adapter is part of this API at `/api/v1/cameras`, `/api/v1/cameras/{camera_id}/snapshot`, and `/api/v1/nearby?lat=...&lon=...&radius_m=1500`. The website's `/transport` page consumes all three. Provider responses preserve live/cached/sample status; provider capture times are unknown.
-- The main dashboard's camera details can upload snapshots and read `/api/observations/{observation_id}/detections`. Uploads create observations but do not trigger inference. The existing fixture ingestion pipeline remains the writer of demo detections/incidents.
-- Snapshot URLs are origin-relative `/api/snapshots/{id}` paths. The frontend resolves them through `/backend` (including old absolute snapshot URLs), so local ports and Docker hostnames do not leak into browser requests.
-- Uploading an older snapshot adds history without replacing a more recent camera preview.
-- On startup, existing `sentinelx_records` camera/observation/detection/incident JSON rows are copied into missing typed rows transactionally and in dependency order. Existing typed rows are preserved; legacy rows are retained. This is a compatibility migration for this schema transition, not a general migration framework.
-- Operator sessions, assignment/workflow writes, and HLS streams remain proposed interfaces from the earlier frontend PR. Their unavailable states remain explicit; this integration does not fabricate successful writes or live video.
-
-See [the endpoint integration map](../docs/integration.md) for producers, consumers and validation.
+See [endpoint integration](../docs/integration.md). Historical JSON records migrate without overwriting typed rows. Legacy transport database rows are preserved for compatibility but not exposed. This local API has no authentication; bind it to localhost.
