@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Request
+from datetime import datetime
+from uuid import uuid4
+
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import FileResponse
 
 from backend.app.schemas import Camera, CameraObservation, Detection, Incident, MapData, TransportObservation
 from backend.app.services.api import SentinelXService
 
 router = APIRouter()
+MAX_SNAPSHOT_BYTES = 10 * 1024 * 1024
 
 
 def _service(request: Request) -> SentinelXService:
@@ -53,6 +58,41 @@ def map_data(request: Request):
 @router.post("/api/cameras", response_model=Camera, status_code=201)
 def save_camera(item: Camera, request: Request):
     return _service(request).save("cameras", item)
+
+
+@router.post(
+    "/api/cameras/{camera_id}/snapshots",
+    response_model=CameraObservation,
+    status_code=201,
+)
+async def upload_camera_snapshot(
+    camera_id: str,
+    request: Request,
+    file: UploadFile = File(...),
+    captured_at: datetime = Form(...),
+):
+    contents = await file.read(MAX_SNAPSHOT_BYTES + 1)
+    if len(contents) > MAX_SNAPSHOT_BYTES:
+        raise HTTPException(status_code=413, detail="Image exceeds the 10 MB upload limit")
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded image is empty")
+    if captured_at.tzinfo is None or captured_at.utcoffset() is None:
+        raise HTTPException(status_code=422, detail="captured_at must include a timezone")
+
+    snapshot_id = uuid4().hex
+    image_url = str(request.url_for("get_snapshot", snapshot_id=snapshot_id))
+    try:
+        return _service(request).upload_snapshot(
+            camera_id, captured_at, contents, image_url
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=415, detail=str(exc)) from exc
+
+
+@router.get("/api/snapshots/{snapshot_id}", name="get_snapshot")
+def get_snapshot(snapshot_id: str, request: Request):
+    metadata, path = _service(request).snapshot_file(snapshot_id)
+    return FileResponse(path, media_type=metadata["content_type"])
 
 
 @router.post("/api/observations", response_model=CameraObservation, status_code=201)
