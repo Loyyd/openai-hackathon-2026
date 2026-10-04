@@ -1,0 +1,12 @@
+[
+  {
+    "id": "demo_detection",
+    "observation_id": "demo_obs_0",
+    "type": "heavy_traffic",
+    "confidence": 0.87,
+    "label": "DEMO: Heavy traffic",
+    "metadata": {
+      "demo": true
+    }
+  }
+]

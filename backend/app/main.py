@@ -1,0 +1,29 @@
+"""SentinelX backend entry point. Umut can extend services without changing routes."""
+import os
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.app.api.routes import router
+from backend.app.database.repository import Repository, make_repository
+from backend.app.services.images import MemoryImageMetadataStore
+from backend.app.services.api import ResourceNotFound, SentinelXService
+
+
+def create_app(repository: Repository | None = None) -> FastAPI:
+    app = FastAPI(title="SentinelX API", version="0.1.0", description="DEMO DATA until live providers are connected")
+    app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    app.state.repository = repository or make_repository(os.getenv("DATABASE_URL"))
+    app.state.image_metadata = MemoryImageMetadataStore()
+    app.state.service = SentinelXService(app.state.repository, app.state.image_metadata)
+
+    @app.exception_handler(ResourceNotFound)
+    async def resource_not_found(request: Request, exc: ResourceNotFound) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+    app.include_router(router)
+    return app
+
+
+app = create_app()

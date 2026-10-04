@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-labelledby="title desc">
+  <title id="title">Synthetic Dublin camera preview</title>
+  <desc id="desc">Illustrated road and Dublin city skyline, demo art only.</desc>
+  <defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#bdcfca"/><stop offset="1" stop-color="#e0e7df"/></linearGradient></defs>
+  <rect width="720" height="360" fill="url(#sky)"/><circle cx="570" cy="78" r="33" fill="#e8e5c9" opacity=".8"/>
+  <path d="M0 193h82v-47h34v47h19v-66h45v66h40v-40h29v40h32v-79h43v79h38v-53h30v53h45v-38h27v38h48v-63h42v63h37v-48h39v48h50v167H0z" fill="#879c92"/>
+  <path d="M0 224h720v136H0z" fill="#596964"/><path d="M0 250h720M0 338h720" stroke="#78857d" stroke-width="3"/>
+  <path d="M345 224 278 360M385 224l75 136" stroke="#6a7972" stroke-width="4"/><path d="M358 252v19m0 18v19m0 18v19" stroke="#e8dfab" stroke-width="4" stroke-linecap="round"/>
+  <g fill="#d3d6bf"><rect x="74" y="286" width="48" height="20" rx="7"/><rect x="530" y="299" width="55" height="22" rx="7"/></g>
+  <rect x="15" y="15" width="181" height="27" rx="5" fill="#fff" fill-opacity=".8"/><text x="27" y="33" fill="#526c60" font-family="sans-serif" font-size="12" font-weight="600">SYNTHETIC DEMO PREVIEW</text>
+</svg>

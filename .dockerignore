@@ -1,0 +1,10 @@
+.git
+.hoplite
+.venv
+**/node_modules
+**/.next
+**/__pycache__
+.env
+.env.*
+artifacts
+*.db

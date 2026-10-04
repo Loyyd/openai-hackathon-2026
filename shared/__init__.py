@@ -1,0 +1,1 @@
+"""SentinelX cross-component contracts."""

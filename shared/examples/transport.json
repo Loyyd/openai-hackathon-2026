@@ -1,0 +1,21 @@
+[
+  {
+    "id": "demo_bus_41",
+    "provider": "transport_for_ireland DEMO",
+    "type": "bus",
+    "route": "41",
+    "vehicle_id": "demo_vehicle",
+    "location": {
+      "id": "oconnell",
+      "name": "O'Connell Street",
+      "latitude": 53.35,
+      "longitude": -6.26
+    },
+    "timestamp": "2026-10-04T10:00:00Z",
+    "speed": 18.4,
+    "delay_seconds": 240,
+    "metadata": {
+      "demo": true
+    }
+  }
+]

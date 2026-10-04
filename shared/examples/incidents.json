@@ -1,0 +1,28 @@
+[
+  {
+    "id": "demo_incident",
+    "type": "traffic_congestion",
+    "title": "DEMO: Congestion at Custom House Quay",
+    "description": "Synthetic traffic scenario for development.",
+    "severity": "medium",
+    "confidence": 0.87,
+    "location": {
+      "id": "custom_house",
+      "name": "Custom House Quay",
+      "latitude": 53.348,
+      "longitude": -6.248
+    },
+    "camera_ids": [
+      "demo_cam_0"
+    ],
+    "related_observation_ids": [
+      "demo_obs_0"
+    ],
+    "first_seen": "2026-10-04T10:00:00Z",
+    "last_seen": "2026-10-04T10:00:00Z",
+    "status": "active",
+    "metadata": {
+      "demo": true
+    }
+  }
+]
