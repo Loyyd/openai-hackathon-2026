@@ -1,0 +1,164 @@
+{
+  "schema_version": "1.0.0",
+  "mode": "sample",
+  "generated_at": "2026-10-04T00:00:00+00:00",
+  "sources": {
+    "cameras": {
+      "provider": "TII Traffic",
+      "url": "https://iretg.carsprogram.org/cameras_v1/api/cameras",
+      "fetched_at": null
+    },
+    "stops_routes": {
+      "provider": "OpenStreetMap / Overpass",
+      "url": "https://overpass-api.de/api/interpreter",
+      "fetched_at": null
+    },
+    "transit_realtime": {
+      "provider": "NTA / Transport for Ireland GTFS-Realtime",
+      "url": "https://api.nationaltransport.ie/gtfsr/v2",
+      "fetched_at": null
+    }
+  },
+  "cameras": [
+    {
+      "id": "114",
+      "name": "Tallaght",
+      "active": true,
+      "public": true,
+      "location": {
+        "latitude": 53.271192,
+        "longitude": -6.433439,
+        "road": "N81",
+        "place": null
+      },
+      "owner": "MET",
+      "source_updated_at": null,
+      "views": [
+        {
+          "id": "114-1",
+          "name": "Tallaght",
+          "type": "STILL_IMAGE",
+          "image_url": "https://irecam.carsprogram.org/Vaisala/1752_cam1.jpeg"
+        }
+      ],
+      "latest_snapshot": {
+        "url": "https://irecam.carsprogram.org/Vaisala/1752_cam1.jpeg",
+        "captured_at": null,
+        "retrieved_at": null
+      }
+    },
+    {
+      "id": "115",
+      "name": "Blanchardstown Master",
+      "active": true,
+      "public": true,
+      "location": {
+        "latitude": 53.373333,
+        "longitude": -6.373334,
+        "road": "M50",
+        "place": null
+      },
+      "owner": "MET",
+      "source_updated_at": null,
+      "views": [
+        {
+          "id": "115-1",
+          "name": "Blanchardstown Master",
+          "type": "STILL_IMAGE",
+          "image_url": "https://irecam.carsprogram.org/Vaisala/1753_cam1.jpeg"
+        }
+      ],
+      "latest_snapshot": {
+        "url": "https://irecam.carsprogram.org/Vaisala/1753_cam1.jpeg",
+        "captured_at": null,
+        "retrieved_at": null
+      }
+    },
+    {
+      "id": "128",
+      "name": "Dublin Airport",
+      "active": true,
+      "public": true,
+      "location": {
+        "latitude": 53.409647,
+        "longitude": -6.229175,
+        "road": "M50",
+        "place": "Dublin Airport"
+      },
+      "owner": "MET",
+      "source_updated_at": null,
+      "views": [
+        {
+          "id": "128-1",
+          "name": "Dublin Airport",
+          "type": "STILL_IMAGE",
+          "image_url": "https://irecam.carsprogram.org/Vaisala/2284_cam1.jpeg"
+        }
+      ],
+      "latest_snapshot": {
+        "url": "https://irecam.carsprogram.org/Vaisala/2284_cam1.jpeg",
+        "captured_at": null,
+        "retrieved_at": null
+      }
+    }
+  ],
+  "nearby": {
+    "query": {
+      "latitude": 53.409647,
+      "longitude": -6.229175,
+      "radius_m": 1500
+    },
+    "stops": [
+      {
+        "id": "demo:stop:airport-approach",
+        "name": "Demo stop near Dublin Airport approach (illustrative)",
+        "code": "DEMO-STOP-1",
+        "latitude": 53.4102,
+        "longitude": -6.2301,
+        "distance_m": 100,
+        "routes": ["DEMO-16"],
+        "source": "Demo fixture",
+        "demo_only": true
+      }
+    ],
+    "routes": [
+      {
+        "id": "demo:route:16",
+        "name": "Illustrative airport service",
+        "ref": "DEMO-16",
+        "operator": "Demo fixture",
+        "source": "Demo fixture",
+        "demo_only": true
+      }
+    ],
+    "vehicles": [
+      {
+        "id": "demo:vehicle:1",
+        "route_id": "DEMO-16",
+        "trip_id": "demo:trip:1",
+        "label": "Sample bus (illustrative)",
+        "latitude": 53.411,
+        "longitude": -6.231,
+        "bearing": 45,
+        "speed_mps": 6.5,
+        "distance_m": 190,
+        "delay_seconds": 120,
+        "source": "Demo fixture",
+        "demo_only": true
+      }
+    ],
+    "delays": [
+      {
+        "trip_id": "demo:trip:1",
+        "route_id": "DEMO-16",
+        "delay_seconds": 120,
+        "source": "Demo fixture",
+        "demo_only": true
+      }
+    ],
+    "alerts": [],
+    "realtime_status": "sample",
+    "note": "Stops, route, vehicle, and delay are illustrative demo records, not real service information. They are marked demo_only. Live OSM and NTA data replace them when feeds are reachable; NTA realtime requires NTA_API_KEY."
+  },
+  "sample_notes": "Camera records and coordinates are a compact verified sample from TII's public camera catalogue. Snapshot image URLs are live links; no capture timestamp is published by the source. All transit records are illustrative demo fixtures and are marked demo_only."
+}
