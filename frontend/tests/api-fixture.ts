@@ -64,6 +64,7 @@ export async function installApi(page: Page, options: Partial<ApiState> = {}): P
       const id = decodeURIComponent(path.split('/')[3]);
       return state.historyError ? json({}, 503) : json(state.observations.filter((item) => item.camera_id === id));
     }
+    if (path.endsWith('/detections')) return json([]);
     if (path.endsWith('/stream')) return state.streamUrl ? json({ format: 'hls', url: state.streamUrl }) : json({}, 404);
     if (path.endsWith('/workflow') && request.method() === 'PATCH') {
       const patch: WorkflowPatch = request.postDataJSON();

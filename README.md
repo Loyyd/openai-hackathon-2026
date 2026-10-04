@@ -24,6 +24,8 @@ npm ci
 npm run dev
 ```
 
+The frontend provides Overview (`/`), Incidents (`/incidents`), Cameras (`/cameras`), Ireland transport (`/transport`) and AI replay (`/ai`) workspaces, with System/Light/Dark themes. See the [frontend guide](frontend/README.md) for navigation, source status and verification.
+
 Open http://localhost:3000; API docs: http://localhost:8000/docs. Python reads process environment variables; `.env` is a template, not automatically loaded. Use `export DATABASE_URL=sqlite:///./sentinelx.db` before starting the backend for persisted local data. Leave it unset for independent in-memory development. For frontend configuration, copy BACKEND_URL and relevant NEXT_PUBLIC_* settings into frontend/.env.local, then restart development or rebuild production.
 
 ### Backend startup troubleshooting

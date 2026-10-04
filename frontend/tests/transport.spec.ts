@@ -1,0 +1,76 @@
+import { test, expect } from '@playwright/test';
+import { installApi } from './api-fixture';
+import { installTransport } from './transport-fixture';
+
+test('provider workspace shares the shell, selects snapshots and loads nearby data on demand', async ({ page }) => {
+  const api = await installApi(page);
+  const state = await installTransport(page);
+  await page.goto('/transport');
+  await expect(page.getByRole('link', { name: 'Ireland transport', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(page.getByRole('main')).toHaveCount(1);
+  await expect(page.getByText('Retrieved from TII · capture time unknown')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Camera snapshot: M50 · Finglas interchange' })).toBeVisible();
+  expect(state.nearbyQueries).toHaveLength(0);
+  await page.getByRole('button', { name: 'Load nearby transport', exact: true }).click();
+  await expect(page.getByText('Finglas Road', { exact: true })).toBeVisible();
+  await expect(page.getByText('NTA realtime is not configured. Bus stops and routes remain available.')).toBeVisible();
+  expect(state.nearbyQueries[0]).toContain('lat=53.39');
+  await page.getByLabel('TII camera', { exact: true }).selectOption('115');
+  await expect(page.getByRole('heading', { name: 'N4 · Liffey Valley', exact: true })).toBeVisible();
+  await expect(page.getByText('Finglas Road', { exact: true })).toHaveCount(0);
+  await expect.poll(() => state.snapshotReads.at(-1)).toContain('/115/snapshot');
+  await page.getByLabel('Theme', { exact: true }).selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByLabel('TII camera', { exact: true })).toHaveValue('115');
+  await page.getByRole('button', { name: 'Load nearby transport', exact: true }).click();
+  await expect.poll(() => state.nearbyQueries.length).toBe(2);
+  expect(state.nearbyQueries[1]).toContain('lon=-6.4');
+  expect(api.pageErrors).toEqual([]);
+});
+
+test('provider errors, cached snapshots and illustrative transport stay explicit and can retry', async ({ page }) => {
+  await installApi(page);
+  const state = await installTransport(page);
+  state.catalog.mode = 'cached'; state.snapshotStatus = 'stale-cache';
+  state.nearby.mode = 'sample';
+  await page.goto('/transport');
+  await expect(page.getByText('Catalogue: cached', { exact: true })).toBeVisible();
+  await expect(page.getByText('Cached snapshot · provider unavailable', { exact: true })).toBeVisible();
+  state.nearbyError = true;
+  await page.getByRole('button', { name: 'Load nearby transport', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Nearby public transport' }).getByRole('alert')).toBeVisible();
+  state.nearbyError = false;
+  await page.getByRole('button', { name: 'Refresh nearby transport', exact: true }).click();
+  await expect(page.getByText('Cached or illustrative data. Do not treat these results as current service information.')).toBeVisible();
+  state.catalogError = true; state.snapshotError = true;
+  await page.getByRole('button', { name: 'Refresh provider data', exact: true }).click();
+  await expect(page.getByText(/Showing the last successful catalogue/)).toBeVisible();
+  await expect(page.getByText('Snapshot unavailable.', { exact: true })).toBeVisible();
+  state.catalogError = false; state.snapshotError = false; state.snapshotStatus = 'unavailable-placeholder';
+  await page.getByRole('button', { name: 'Refresh provider data', exact: true }).click();
+  await expect(page.getByText('Snapshot unavailable · offline placeholder', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Showing the last successful catalogue/)).toHaveCount(0);
+  state.catalog.cameras = [];
+  await page.getByRole('button', { name: 'Refresh provider data', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No provider cameras available' })).toBeVisible();
+});
+
+test('snapshot upload errors are inline and analysis failures can recover', async ({ page }) => {
+  await installApi(page);
+  let failAnalysis = true;
+  await page.route('**/backend/api/observations/*/detections', (route) => route.fulfill({ status: failAnalysis ? 503 : 200, json: [{ id: 'det-1', label: 'Vehicle obstruction', confidence: .89 }] }));
+  await page.route('**/backend/api/cameras/*/snapshots', (route) => route.fulfill({ status: 415, json: { detail: 'Invalid image. Choose a JPEG, PNG or WebP.' } }));
+  await page.goto('/cameras');
+  await page.getByRole('button', { name: /Open camera Custom House/ }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Retry analysis' })).toBeVisible();
+  failAnalysis = false;
+  await dialog.getByRole('button', { name: 'Retry analysis' }).click();
+  await expect(dialog.getByText('Vehicle obstruction · 89% confidence', { exact: true })).toBeVisible();
+  await dialog.getByLabel('Snapshot image', { exact: true }).setInputFiles({ name: 'invalid.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
+  await dialog.getByLabel('Captured at (your local time)', { exact: true }).fill('2026-10-04T12:00');
+  await dialog.getByRole('button', { name: 'Save snapshot', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toHaveText('Invalid image. Choose a JPEG, PNG or WebP.');
+  await expect(dialog.getByRole('button', { name: 'Save snapshot', exact: true })).toBeEnabled();
+  await expect(dialog.locator('.detail-snapshot img')).toBeVisible();
+});
