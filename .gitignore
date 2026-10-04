@@ -13,3 +13,6 @@ artifacts/
 *.pt
 output/
 .hoplite/attachments/
+frontend/test-results/
+frontend/playwright-report/
+.playwright-cli/
