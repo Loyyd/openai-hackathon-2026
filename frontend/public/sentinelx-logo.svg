@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 46" width="250" height="46" role="img" aria-label="SentinelX">
+  <defs>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f7ff"/>
+      <stop offset=".48" stop-color="#b9c3d6"/>
+      <stop offset=".52" stop-color="#7c8799"/>
+      <stop offset="1" stop-color="#d7dde9"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5fb4ff"/>
+      <stop offset="1" stop-color="#1c63d6"/>
+    </linearGradient>
+  </defs>
+  <text x="0" y="36" font-family="'Arial Black','Avenir Next Heavy','Segoe UI Black',Arial,sans-serif" font-weight="900" font-size="34" letter-spacing="1" fill="url(#chrome)" font-style="italic">SENTINEL</text>
+  <path d="M207 6h14l8 12 8-12h14l-15 17 15 17h-14l-8-12-8 12h-14l15-17z" fill="url(#blue)"/>
+</svg>

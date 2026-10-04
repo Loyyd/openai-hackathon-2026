@@ -35,6 +35,10 @@ The current backend has public dataset reads and ingestion writes; it does **not
 
 Optional selected-camera HLS playback uses native support first, otherwise a lazy HLS.js import. It starts only on “Watch live video”, tears down on close/camera switch, and keeps snapshots usable when playback fails. Camera and evidence previews use the supplied image URLs without substituting synthetic images for missing real images.
 
+## Shared header and dark theme
+
+All pages use `components/TopBar.tsx`: the SentinelX wordmark (`public/sentinelx-logo.svg`), a centred Map / Camera gallery / AI demo navigation, and a right-hand area for the Ireland transport link and operator session controls. Below it, a case-style band shows the page title, data-source label, a LIVE / DEMO / OFFLINE status pill and the refresh action. The dark operations palette is defined at the end of `app/globals.css` and overrides the light base; standard OpenStreetMap tiles are darkened with a CSS filter rather than a different tile provider.
+
 ## Recorded highway AI demo
 
 The dashboard's “AI demo” link opens /ai from PR #3. This separate page reads processed highway video results, vehicle fingerprints and actual embedding/device/OCR status through /backend/api/ai-demo. It keeps a selected vehicle on refresh and retains the previous results during errors.

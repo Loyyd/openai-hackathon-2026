@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ApiError, request } from '../../lib/api';
+import { TopBar, navIcons } from '../../components/TopBar';
 
 type Vehicle = { vehicle_id: string; color?: string; make?: string; model?: string; first_seen: number; last_seen: number; observation_count: number; identity_confidence?: number; decision?: string; evidence?: Record<string, number> };
 type ReplayFrame = { timestamp: number; vehicles: Pick<Vehicle, 'vehicle_id' | 'identity_confidence' | 'decision' | 'evidence'>[] };
@@ -69,12 +70,14 @@ export default function AIDemo() {
   }, [demo, synchronized, frameIndex]);
   const selected = discovered.find(vehicle => vehicle.vehicle_id === selectedId) ?? discovered.find(vehicle => activeIds.has(vehicle.vehicle_id)) ?? discovered[0];
 
-  return <main className="shell"><header className="topbar"><Link href="/" className="brand">SentinelX</Link><nav className="main-nav"><Link href="/">Overview</Link><Link href="/ai" className="nav-active">AI highway demo</Link></nav></header>
-    <div className="page-content"><div className="welcome-row"><div><span className="eyebrow">LOCAL VIDEO INTELLIGENCE</span><h1>Highway vehicle demo</h1><p>Recorded highway footage · not a live Dublin feed · pseudonymous identities</p></div><button className="refresh-button" disabled={loading} onClick={() => void load()}>{loading ? 'Loading results…' : 'Refresh results'}</button></div>
+  return <main className="shell">
+    <TopBar active="ai" items={[{ key: 'overview', label: 'Map', icon: navIcons.map, href: '/' }, { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '/#cameras' }, { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' }]}><Link className="header-link" href="/transport">Ireland transport</Link></TopBar>
+    <div className="case-band"><div><span className="eyebrow">LOCAL VIDEO INTELLIGENCE</span><h1>Highway vehicle demo</h1><p className="case-subtitle">Recorded highway footage · not a live Dublin feed · pseudonymous identities</p></div><div className="case-meta"><span className="case-id">AI-DEMO · RECORDED</span><span className={'status-pill' + (playing ? '' : ' is-idle')}><i />{playing ? 'PLAYING' : 'REPLAY'}</span><button className="refresh-button" disabled={loading} onClick={() => void load()}>{loading ? 'Loading results…' : 'Refresh results'}</button></div></div>
+    <div className="page-content">
       <p className="demo-notice">Local demo only. Footage may contain readable plates. Scores are heuristic, not verified identities; no owner lookup or cross-camera claim.</p>
       {error && <div role="alert" className="notice notice-error">{error}{demo && ' Showing the last successful results.'}</div>}
       {!demo && !error && <p role="status">Loading AI results…</p>}
-      {demo && <><section className="stats-grid">{[['Source', `${demo.run.width} × ${demo.run.height}`], ['Frames', `${demo.run.frames} at ${demo.run.sample_fps} FPS`], ['Detector', demo.run.detector ? `${demo.run.detector} · ${demo.run.detection_width}px` : 'Status unavailable'], ['Embedding / device', `${demo.run.embedding_backend} / ${demo.run.device}`], ['OCR', demo.run.ocr_status || 'Status unavailable']].map(([label, value]) => <article className="stat-card" key={label}><h3>{label}</h3><p>{value}</p></article>)}</section>
+      {demo && <><section className="stats-grid ai-stats">{[['Source', `${demo.run.width} × ${demo.run.height}`], ['Frames', `${demo.run.frames} at ${demo.run.sample_fps} FPS`], ['Detector', demo.run.detector ? `${demo.run.detector} · ${demo.run.detection_width}px` : 'Status unavailable'], ['Embedding / device', `${demo.run.embedding_backend} / ${demo.run.device}`], ['OCR', demo.run.ocr_status || 'Status unavailable']].map(([label, value]) => <article className="stat-card" key={label}><h3>{label}</h3><p>{value}</p></article>)}</section>
         <div className="content-grid ai-replay-grid"><section className="map-panel ai-video-panel">{demo.video_available ? <video ref={videoRef} controls playsInline preload="metadata" aria-label="Annotated highway replay" src={`${api}/api/ai-demo/media/browser.mp4`} onLoadedData={event => { setMediaError(false); setPlaybackTime(event.currentTarget.currentTime); }} onTimeUpdate={event => setPlaybackTime(event.currentTarget.currentTime)} onSeeked={event => setPlaybackTime(event.currentTarget.currentTime)} onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onError={() => { setMediaError(true); setPlaying(false); }} /> : <p>Browser video not prepared. Convert annotated.mp4 to H.264 as documented.</p>}
           {mediaError && <p role="alert">Replay could not load. You can still inspect the processed identities.</p>}
           <div className="ai-playback-status"><span className={`ai-status-dot${playing ? ' is-playing' : ''}`} /><strong>{playing ? 'Playing' : 'Recorded replay'}</strong><span>{sourceTime !== null ? `Source ${sourceTime.toFixed(2)}s` : 'Local inference · sampled footage'}</span></div>

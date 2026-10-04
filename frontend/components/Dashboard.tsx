@@ -14,6 +14,7 @@ import { CameraDetails } from './CameraDetails';
 import { IncidentDetails } from './IncidentDetails';
 import { LoginDialog } from './LoginDialog';
 import { ConnectionStatus } from './ConnectionStatus';
+import { TopBar, navIcons } from './TopBar';
 
 export function Dashboard() {
   const [source, setSource] = useState<DataSource>(process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true' ? 'demo' : 'api');
@@ -71,13 +72,19 @@ function DashboardContent({ source, onSource }: { source: DataSource; onSource: 
   };
   return <main className="shell">
     <a className="skip-link" href="#overview">Skip to dashboard</a>
-    <header className="topbar">
-      <a className="brand" href="#overview" onClick={() => navigate('overview')} aria-label="SentinelX home" data-focus-home><span className="brand-mark">S<span>×</span></span><span>sentinel<span className="brand-x">x</span></span></a>
-      <nav className="main-nav" aria-label="Main navigation">{['overview', 'incidents', 'cameras'].map((item) => <a key={item} className={section === item ? 'nav-active' : ''} aria-current={section === item ? 'page' : undefined} href={'#' + item} onClick={() => navigate(item)}>{item[0].toUpperCase() + item.slice(1)}{item === 'incidents' && <span className="nav-count">{data ? active.length : '—'}</span>}</a>)}<Link href="/transport">Ireland transport</Link><Link href="/ai">AI demo</Link></nav>
-      <div className="header-right"><span className="header-city">DUBLIN, IE</span>{session.user ? <><span className="operator-name">{session.user.display_name}{source === 'demo' && <small>Demo operator</small>}</span><button className="secondary-button" disabled={session.busy} onClick={() => void session.logout().catch(() => undefined)}>Sign out</button></> : <button className="secondary-button" onClick={() => setLogin(true)}>Operator sign in</button>}</div>
-    </header>
+    <TopBar active={section} items={[
+      { key: 'overview', label: 'Map', icon: navIcons.map, href: '#overview', onClick: () => navigate('overview') },
+      { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '#cameras', onClick: () => navigate('cameras') },
+      { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' },
+    ]}>
+      <Link className="header-link" href="/transport">Ireland transport</Link>
+      {session.user ? <><span className="operator-chip"><span className="operator-avatar" aria-hidden="true">{session.user.display_name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span><span className="operator-name">{session.user.display_name}{source === 'demo' && <small>Demo operator</small>}</span></span><button className="secondary-button" disabled={session.busy} onClick={() => void session.logout().catch(() => undefined)}>Sign out</button></> : <button className="secondary-button" onClick={() => setLogin(true)}>Operator sign in</button>}
+    </TopBar>
+    <div className="case-band">
+      <div><div className="eyebrow">ACTIVE OVERVIEW</div><h1>Dublin situational awareness</h1></div>
+      <div className="case-meta"><span className="case-id">{source === 'demo' ? 'SYNTHETIC DEMO DATA' : 'BACKEND DATA'}</span><span className={'status-pill' + (dashboard.error ? ' is-offline' : '')}><i />{dashboard.error ? 'OFFLINE' : source === 'demo' ? 'DEMO' : 'LIVE'}</span><button className="refresh-button" onClick={() => void dashboard.refresh()} disabled={dashboard.refreshing}><span className={dashboard.refreshing ? 'refreshing' : ''} aria-hidden="true">↻</span>{dashboard.refreshing ? 'Refreshing…' : 'Refresh data'}</button></div>
+    </div>
     <div className="page-content" id="overview">
-      <div className="welcome-row"><div><div className="eyebrow">SITUATIONAL AWARENESS <span className="eyebrow-line" /> DUBLIN, IRELAND</div><h1>A clearer view of the city<span>.</span></h1><p className="welcome-subtitle">Dublin transport and infrastructure, in one place.</p></div><button className="refresh-button" onClick={() => void dashboard.refresh()} disabled={dashboard.refreshing}><span className={dashboard.refreshing ? 'refreshing' : ''} aria-hidden="true">↻</span>{dashboard.refreshing ? 'Refreshing…' : 'Refresh data'}</button></div>
       <ConnectionStatus source={source} data={data} error={dashboard.error} workflowStatus={workflowStatus} workflowError={dashboard.workflowError} lastSuccess={dashboard.lastSuccess} refreshing={dashboard.refreshing} onRetry={() => void dashboard.refresh()} onSource={onSource} />
       {session.error && <p className="session-notice" role="status">{session.error}</p>}
       <section className="stats-grid" aria-label="City status">

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { errorMessage } from '../../lib/api';
 import { dateTime } from '../../lib/presentation';
 import { nearbyTransport, providerCameras, type CameraCatalog, type NearbyData } from '../../lib/transport';
+import { TopBar, navIcons } from '../../components/TopBar';
 
 function ProviderSnapshot({ cameraId, revision }: { cameraId: string; revision: number }) {
   const [image, setImage] = useState('');
@@ -65,8 +66,10 @@ export default function TransportPage() {
     }
     return () => controller.abort();
   }, [lat, lon, nearbyRequested, revision]);
-  return <main className="shell"><header className="topbar"><Link href="/" className="brand">SentinelX</Link><nav className="main-nav"><Link href="/">Overview</Link><Link href="/transport" aria-current="page">Ireland transport</Link><Link href="/ai">AI demo</Link></nav></header>
-    <div className="page-content"><div className="welcome-row"><div><span className="eyebrow">TII · OPENSTREETMAP · NTA</span><h1>Ireland transport</h1><p>Provider snapshots and nearby public transport.</p></div><button className="refresh-button" disabled={loading} onClick={() => setRevision((value) => value + 1)}>{loading ? 'Loading…' : 'Refresh provider data'}</button></div>
+  return <main className="shell">
+    <TopBar active="transport" items={[{ key: 'overview', label: 'Map', icon: navIcons.map, href: '/' }, { key: 'cameras', label: 'Camera gallery', icon: navIcons.camera, href: '/#cameras' }, { key: 'ai', label: 'AI demo', icon: navIcons.ai, href: '/ai' }]}><Link className="header-link" href="/transport" aria-current="page">Ireland transport</Link></TopBar>
+    <div className="case-band"><div><span className="eyebrow">TII · OPENSTREETMAP · NTA</span><h1>Ireland transport</h1><p className="case-subtitle">Provider snapshots and nearby public transport.</p></div><div className="case-meta"><button className="refresh-button" disabled={loading} onClick={() => setRevision((value) => value + 1)}>{loading ? 'Loading…' : 'Refresh provider data'}</button></div></div>
+    <div className="page-content">
       {error && <p role="alert">{error}{catalog && ' Showing the last successful catalogue.'}</p>}
       {catalog && <><p className="demo-notice">Camera catalogue: {catalog.mode} · Retrieved {dateTime(catalog.generated_at)}. Snapshot capture times are not supplied by TII.</p>{catalog.warning && <p role="status">{catalog.warning}</p>}
         <label className="provider-picker">Camera<select aria-label="TII camera" value={selected} onChange={(event) => { setSelected(event.target.value); setNearbyRequested(false); }}>{catalog.cameras.map((item) => <option key={item.id} value={item.id}>{item.name || item.id} · {item.location.road || 'Road unavailable'}</option>)}</select></label>

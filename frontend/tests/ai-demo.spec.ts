@@ -30,7 +30,7 @@ test('the recent AI page remains reachable and preserves vehicle inspection thro
   await expect(page.getByRole('button', { name: /VX-0002/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('video')).toHaveAttribute('src', '/backend/api/ai-demo/media/browser.mp4');
   await expect(page.locator('video')).not.toHaveAttribute('poster');
-  await page.getByRole('link', { name: 'Overview', exact: true }).click();
+  await page.getByRole('link', { name: 'Map', exact: true }).click();
   await expect(page.getByTestId('active-count')).toHaveText('5');
   expect(state.pageErrors).toEqual([]);
 });
