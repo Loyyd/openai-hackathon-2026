@@ -13,11 +13,16 @@ import { IncidentDetails } from './IncidentDetails';
 import { TopBar, navIcons } from './TopBar';
 
 type Processing = { running: boolean; capturing: boolean; stored_snapshots: number; completed: number; pending: number; failed: number; vehicles: number; error: string | null };
+// Reuse the last successful dataset between routes; restore after hydration.
+let cachedMap: MapData | null = null;
+let cachedProcessing: Processing | null = null;
+
 export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras' }) {
   const client = useMemo(() => createClient(), []);
   const [data, setData] = useState<MapData | null>(null);
   const [processing, setProcessing] = useState<Processing | null>(null);
   const [error, setError] = useState('');
+  const [activeSection, setActiveSection] = useState('overview');
   const [selection, setSelection] = useState<Selection>(null);
   const [filters, setFilters] = useState<IncidentFilters>(defaultFilters);
   const [expandedIncidents, setExpandedIncidents] = useState(false);
@@ -28,12 +33,32 @@ export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras'
     const pending = { signal };
     pendingRefresh.current = pending;
     try {
-      const [map, state] = await Promise.all([client.map(signal), request<Processing>('/api/processing', { signal })]);
+      const results = await Promise.allSettled([
+        client.map(signal).then(map => {
+          if (signal?.aborted) return;
+          cachedMap = map;
+          setData(previous => JSON.stringify(previous) === JSON.stringify(map) ? previous : map);
+          setError(''); setRefreshKey(new Date().toISOString());
+        }),
+        request<Processing>('/api/processing', { signal }).then(state => {
+          if (signal?.aborted) return;
+          cachedProcessing = state; setProcessing(state);
+        }),
+      ]);
       if (signal?.aborted) return;
-      setData(previous => JSON.stringify(previous) === JSON.stringify(map) ? previous : map); setProcessing(state); setError(''); setRefreshKey(new Date().toISOString());
+      const failed = results.find(result => result.status === 'rejected');
+      if (failed?.status === 'rejected') setError(errorMessage(failed.reason));
     } catch (cause) { if (!signal?.aborted) setError(errorMessage(cause)); }
     finally { if (pendingRefresh.current === pending) pendingRefresh.current = null; }
   }, [client]);
+  useEffect(() => {
+    if (cachedMap) setData(cachedMap);
+    if (cachedProcessing) setProcessing(cachedProcessing);
+    const updateSection = () => setActiveSection(window.location.hash === '#incidents' ? 'incidents' : 'overview');
+    updateSection();
+    window.addEventListener('hashchange', updateSection);
+    return () => window.removeEventListener('hashchange', updateSection);
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     const run = () => { if (!document.hidden) void refresh(controller.signal); };
@@ -56,9 +81,9 @@ export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras'
     catch (cause) { setError(errorMessage(cause)); }
   }
   return <main className="shell">
-    <TopBar active={view} items={[
-      { key: 'overview', label: 'Map', icon: navIcons.map, href: '/#overview' },
-      { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '/#incidents' },
+    <TopBar active={view === 'cameras' ? 'cameras' : activeSection} items={[
+      { key: 'overview', label: 'Map', icon: navIcons.map, href: view === 'overview' ? '#overview' : '/#overview' },
+      { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: view === 'overview' ? '#incidents' : '/#incidents' },
       { key: 'cameras', label: 'Cameras', icon: navIcons.camera, href: '/cameras' },
       { key: 'ai', label: 'Tracking demo', icon: navIcons.ai, href: '/ai' },
     ]} />

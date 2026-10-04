@@ -7,3 +7,5 @@ The main dashboard shows the map and incidents. Cameras opens a dedicated `/came
 TII observation times show retrieval time because provider capture time is unknown. Vehicle IDs are heuristic and scoped per camera; the UI distinguishes detection confidence from identity confidence. The Tracking demo link immediately beside Cameras opens `/ai`, the recorded highway replay with vehicle tracking and an identity panel.
 
 Run `npm run typecheck`, `npm run lint` and `npm run build`. Development uses `.next-dev`; production builds use `.next`. See [API integration](../docs/integration.md).
+
+Navigation keeps the last loaded dashboard dataset while fresh requests run in the background. Map and incident sections use native anchors; separate routes are prefetched. Camera/map content no longer waits for processing-status responses. For local demos use `npm run build` followed by `npm run start -- --hostname 127.0.0.1 --port 3001` to avoid development compilation on navigation.

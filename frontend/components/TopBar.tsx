@@ -15,12 +15,16 @@ export const navIcons = {
 
 export function TopBar({ items, active, children }: { items: TopBarItem[]; active: string; children?: ReactNode }) {
   return <header className="topbar">
-    <Link href="/" className="brand" aria-label="SentinelX home" data-focus-home>
+    <Link href="/" prefetch className="brand" aria-label="SentinelX home" data-focus-home>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/sentinelx-logo.svg" alt="" width="190" height="35" /><span className="sr-only">SentinelX</span>
     </Link>
     <nav className="main-nav" aria-label="Main navigation">
-      {items.map((item) => <Link key={item.key} href={item.href} onClick={item.onClick} className={active === item.key ? 'nav-active' : ''} aria-current={active === item.key ? 'page' : undefined}>{item.icon}<span>{item.label}</span></Link>)}
+      {items.map((item) => {
+        const props = { onClick: item.onClick, className: active === item.key ? 'nav-active' : '', 'aria-current': active === item.key ? 'page' as const : undefined };
+        return item.href.startsWith('#') ? <a key={item.key} href={item.href} {...props}>{item.icon}<span>{item.label}</span></a> :
+          <Link key={item.key} href={item.href} prefetch {...props}>{item.icon}<span>{item.label}</span></Link>;
+      })}
     </nav>
     <div className="header-right">{children}</div>
   </header>;
