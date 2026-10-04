@@ -56,6 +56,7 @@ export function Dashboard() {
       { key: 'overview', label: 'Map', icon: navIcons.map, href: '#overview' },
       { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '#incidents' },
       { key: 'cameras', label: 'Cameras', icon: navIcons.camera, href: '#cameras' },
+      { key: 'ai', label: 'Tracking demo', icon: navIcons.ai, href: '/ai' },
     ]} />
     <div className="case-band"><div><div className="eyebrow">CAMERAS &amp; INCIDENTS</div><h1>Camera monitoring</h1></div>
       <button className="secondary-button" disabled={!processing?.running || processing.capturing} onClick={() => void capture()}>{processing?.capturing ? 'Collecting snapshots…' : 'Collect snapshots'}</button>
