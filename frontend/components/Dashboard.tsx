@@ -52,8 +52,8 @@ export function Dashboard({ view = 'overview' }: { view?: 'overview' | 'cameras'
   }
   return <main className="shell">
     <TopBar active={view} items={[
-      { key: 'overview', label: 'Map', icon: navIcons.map, href: '#overview' },
-      { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '#incidents' },
+      { key: 'overview', label: 'Map', icon: navIcons.map, href: '/#overview' },
+      { key: 'incidents', label: 'Incidents', icon: navIcons.map, href: '/#incidents' },
       { key: 'cameras', label: 'Cameras', icon: navIcons.camera, href: '/cameras' },
       { key: 'ai', label: 'Tracking demo', icon: navIcons.ai, href: '/ai' },
     ]} />
