@@ -60,9 +60,10 @@ class CameraPipeline:
             result = dict(self.state)
         states = self.repo.records('analysis')
         stored = self.stored_observations()
+        analysis_by_id = {item['observation_id']: item for item in states}
         result.update(stored_snapshots=len(stored), completed=sum(item.get('status') == 'completed' for item in states),
                       failed=sum(item.get('status') == 'failed' for item in states),
-                      pending=sum(not self.repo.get_record('analysis', item['id']) or self.repo.get_record('analysis', item['id']).get('status') == 'queued' for item in stored),
+                      pending=sum(analysis_by_id.get(item['id'], {}).get('status', 'queued') == 'queued' for item in stored),
                       vehicles=self.repo.count_records('vehicle'), poll_seconds=max(30, int(os.getenv('CAMERA_POLL_SECONDS', '60'))))
         return result
 

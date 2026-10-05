@@ -102,7 +102,7 @@ async def upload_camera_snapshot(
 @router.get("/api/snapshots/{snapshot_id}", name="get_snapshot")
 def get_snapshot(snapshot_id: str, request: Request):
     metadata, path = _service(request).snapshot_file(snapshot_id)
-    return FileResponse(path, media_type=metadata["content_type"])
+    return FileResponse(path, media_type=metadata["content_type"], headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @router.post("/api/observations", response_model=CameraObservation, status_code=201)
